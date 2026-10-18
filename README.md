@@ -1,0 +1,90 @@
+# SwiftyTerminal
+
+Rich terminal UX for Swift command-line tools: colors, prompts, spinners, progress, step lists,
+live command output, tables and alert boxes, with plain-text fallbacks for CI and redirected I/O.
+Shared by amoo and ShipIt.
+
+```swift
+.package(url: "https://github.com/maniramezan/SwiftyTerminal.git", branch: "main")
+```
+
+| Product | Contents |
+| --- | --- |
+| `SwiftyTerminal` | Everything below. No system-library dependencies. |
+| `SwiftyTerminalLineEditor` | libedit line editing with history and tab completion, for REPLs. |
+| `SwiftyTerminalTesting` | `ScriptedTerminal`, a fake terminal for testing prompts and progress. |
+
+Requires Swift 6.2 and macOS 15 or Linux.
+
+## Prompts
+
+```swift
+let prompter = Prompter()
+let scheme = prompter.ask("Xcode scheme", default: "MyApp")                 // free text
+let password = prompter.askSecret("Keystore password")                       // hidden input
+let upload = prompter.confirm("Upload to TestFlight?", default: false)       // one key: y / n
+let action = prompter.askKey("Tests failed", keys: ["r", "s", "a"], default: "r")
+let track = prompter.choose("Play track", options: ["internal", "beta", "production"], default: 0)
+let devices = prompter.chooseMany("Devices", options: deviceNames, defaults: [0])
+```
+
+On a terminal, `choose` and `chooseMany` are arrow-key menus (radio buttons and checkboxes) with
+`/` to filter long lists, and they collapse to a one-line answer when done. When input is redirected
+or `TERM=dumb`, they fall back to numbered lists (`1,3`, `2-4`, `all`), so `printf '2\ny\n' | tool`
+works. Every question returns `nil` when the user cancels (Esc, Ctrl-C in a menu, Ctrl-D).
+
+Depend on the `Prompting` protocol in command logic and pass a fake in tests, or test the prompts
+themselves with `ScriptedTerminal`:
+
+```swift
+let terminal = ScriptedTerminal(.key(.down), .key(.enter))
+#expect(Prompter(terminal: terminal).choose("Platform", options: ["iOS", "Android"], default: 0) == 1)
+```
+
+## Progress
+
+All progress output goes to stderr, so `--json` stdout stays clean, and it only animates when stderr
+is a terminal.
+
+```swift
+let inspection = try await withSpinner("Inspecting project") { try await inspector.inspect() }
+
+let bar = ProgressBar("Uploading")
+await bar.update(completed: sent, total: size)
+await bar.succeed("Uploaded build 42")
+
+let steps = StepList(["Build", "Test", "Upload"])
+await steps.start("Build"); await steps.succeed("Build")
+await steps.finish()
+
+let tail = LiveTail("xcodebuild", visibleLineCount: 5)   // last N lines, full output on failure
+await tail.start()
+for try await line in output { await tail.append(line + "\n") }
+await tail.succeed()
+```
+
+Spinners wait 150 ms before drawing, so fast operations never flicker. Without a terminal, step lists
+and live tails write plain lines that read well in CI logs.
+
+## Output
+
+```swift
+let console = Console(colorMode: options.color)   // .auto, .always, .never
+console.header("Doctor")
+console.check("Xcode 26.1", passed: true)
+console.keyValue("Shipfile", path)
+console.warning("Signing identity expires in 9 days")
+console.table(headers: ["Device", "State"], rows: rows)
+console.alert(.error, title: "Upload failed", lines: [reason], nextSteps: ["Run shipit doctor"])
+```
+
+Color follows `NO_COLOR`, `FORCE_COLOR`, `TERM=dumb` and whether the stream is a terminal, decided per
+stream. Glyphs and box drawing fall back to ASCII when the locale is not UTF-8. `TextMetrics` measures
+and truncates by display width, so CJK text and emoji line up.
+
+## Development
+
+```bash
+make check      # lint + unit tests + real-PTY tests + Linux (Docker)
+make demo       # tour every component
+```
