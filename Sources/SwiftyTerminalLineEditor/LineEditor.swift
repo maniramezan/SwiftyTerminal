@@ -18,9 +18,13 @@ public struct LineEditor: Sendable {
     /// Where history is loaded from and saved to, if anywhere.
     public let historyPath: String?
 
-    /// Creates an editor, loading history from `historyPath` when given.
+    /// Creates an editor that loads and saves history at `historyPath`, if given.
     public init(historyPath: String? = nil) {
         self.historyPath = historyPath
+    }
+
+    /// Adds the history saved at ``historyPath`` to this session.
+    public func loadHistory() {
         if let historyPath {
             st_le_load_history(historyPath)
         }
