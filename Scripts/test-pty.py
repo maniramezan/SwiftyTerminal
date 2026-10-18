@@ -126,7 +126,6 @@ class PTYPromptTests(unittest.TestCase):
             while select.select([master], [], [], 0)[0]:
                 receive()
             restored = termios.tcgetattr(slave)
-            # macOS sets PENDIN when terminal input settings change.
             ignored = getattr(termios, "PENDIN", 0)
             original[3] &= ~ignored
             restored[3] &= ~ignored
@@ -141,17 +140,17 @@ class PTYPromptTests(unittest.TestCase):
 
     def test_full_conversation(self):
         self.run_session([
-            (b"Enter select", b"\x1b[B"),          # down arrow
+            (b"Enter select", b"\x1b[B"),
             (b"> (*) Android", b"\r"),
             (b"result: platform=1", None),
             (b"Continue? [Y/n]: ", b"n"),
             (b"result: continue=false", None),
-            (b"Enter done", b"/"),                 # start filtering
+            (b"Enter done", b"/"),
             (b"Filter:", b"pix"),
-            (b"Pixel Tablet", b" "),               # toggle Pixel 9
-            (b"> [x] Pixel 9", b"\x1b\r"),         # clear filter, then Enter right away
+            (b"Pixel Tablet", b" "),
+            (b"> [x] Pixel 9", b"\x1b\r"),
             (b"result: devices=0,3", None),
-            (b"Tests failed [R/s/a]: ", b"x"),     # invalid key, then valid
+            (b"Tests failed [R/s/a]: ", b"x"),
             (b"Press one of r, s, a.", b"S"),
             (b"result: action=s", None),
             (b"Scheme [MyApp]: ", b"\r"),
@@ -164,9 +163,9 @@ class PTYPromptTests(unittest.TestCase):
         self.run_session([
             (b"Enter select", b"\x1b"),
             (b"result: platform=cancelled", None),
-            (b"Continue? [Y/n]: ", b"\x04"),       # Ctrl-D
+            (b"Continue? [Y/n]: ", b"\x04"),
             (b"result: continue=cancelled", None),
-            (b"Enter done", b"\x03"),              # Ctrl-C cancels a menu
+            (b"Enter done", b"\x03"),
             (b"result: devices=cancelled", None),
             (b"Tests failed [R/s/a]: ", b"\r"),
             (b"result: action=r", None),

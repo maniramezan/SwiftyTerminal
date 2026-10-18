@@ -1,9 +1,6 @@
 import SwiftyTerminal
 import SwiftyTerminalLineEditor
 
-// Shows every component. `Scripts/test-pty.py` drives the `prompts` section through a real
-// pseudo-terminal, so keep its prompt text and `result:` lines in sync with that script.
-
 let section = CommandLine.arguments.dropFirst().first ?? "all"
 let prompter = Prompter()
 let console = Console()

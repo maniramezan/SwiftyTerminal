@@ -188,8 +188,6 @@ public struct Prompter: Prompting {
         }
     }
 
-    // MARK: - Helpers
-
     private func writeNumberedOptions(_ prompt: String, options: [String]) {
         terminal.writeLine(styler.apply("\(prompt):", .bold, .cyan))
         for (offset, option) in options.enumerated() {
@@ -205,8 +203,6 @@ public struct Prompter: Prompting {
             defaults: defaults,
             viewportHeight: menuHeight
         )
-        // Raw mode is held for the whole menu, so keys typed while a frame is drawn are not
-        // echoed or turned into signals.
         return terminal.withRawInput {
             menuLoop(&menu)
         }

@@ -223,8 +223,6 @@ static void st_le_configure_completions_if_needed(void) {
         return;
     }
 
-    // Keep `_` within the same token so commands like `tap_element` complete
-    // as a single word instead of being truncated after `tap`.
     rl_basic_word_break_characters = " \t\n";
     rl_completer_word_break_characters = " \t\n";
     rl_attempted_completion_function = st_le_attempted_completion;
@@ -287,9 +285,6 @@ void st_le_set_command_completions(const char *command, const char *items) {
 
     g_command_items = resized;
 
-    // strdup can return NULL under memory pressure; we must check before
-    // installing the entry, otherwise st_le_find_command_items would later
-    // dereference NULL during strcmp.
     char *command_copy = strdup(command);
     if (!command_copy) {
         st_le_free_items(parsed_items, parsed_count);

@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# DocC's static site does not navigate from its root URL, so point the root at the module page.
 set -euo pipefail
 cat > "${1:?output directory}/index.html" <<'HTML'
 <!doctype html>

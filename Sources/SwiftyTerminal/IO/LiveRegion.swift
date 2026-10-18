@@ -65,7 +65,6 @@ public struct LiveRegion: Sendable {
         return "\u{1B}[\(rows)A\r\u{1B}[J"
     }
 
-    // A resize can scroll previously rendered rows out of the visible screen.
     private func fitted(_ line: String, width: Int) -> String {
         let clean = TextMetrics.sanitized(line)
         let ellipsis = terminal.environment.supportsUnicode ? "…" : "..."

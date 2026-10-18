@@ -39,7 +39,6 @@ docker_args+=(
     -v "${docker_home}:${container_home}"
     -v "${docker_tmp}:/tmp"
     -e "HOME=${container_home}"
-    # Bind-mounted checkouts can appear owned by another user; trust them inside the container.
     -e "GIT_CONFIG_COUNT=1"
     -e "GIT_CONFIG_KEY_0=safe.directory"
     -e "GIT_CONFIG_VALUE_0=*"

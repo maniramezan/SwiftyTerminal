@@ -20,26 +20,26 @@ terminal belongs here rather than in a consumer, so the tools look and behave al
 
 ## Build & test
 
-```bash
-make build       # swift build -Xswiftc -warnings-as-errors
-make test        # Swift Testing unit tests
-make test-pty    # real pseudo-terminal: raw keys, hidden input, termios restored
-make coverage    # tests with coverage; fails below 90% Swift line coverage (C is covered by test-pty)
-make docc        # DocC with warnings as errors: document every public symbol and parameter
-make lint        # swift-format lint --strict (run after the final edit)
-make linux-ci    # Docker, swift:6.2.4-noble — run after touching C or #if os code
-make check       # all of the above
-make format      # swift-format in place (fixes lint failures)
-```
+| Command | Purpose |
+| --- | --- |
+| `make build` | `swift build -Xswiftc -warnings-as-errors` |
+| `make test` | Swift Testing unit tests |
+| `make test-pty` | Real pseudo-terminal: raw keys, hidden input, termios restored |
+| `make coverage` | Tests with coverage; fails below 90% Swift line coverage (C is covered by test-pty) |
+| `make docc` | DocC with warnings as errors: document every public symbol and parameter |
+| `make lint` | swift-format lint --strict (run after the final edit) |
+| `make linux-ci` | Docker, swift:6.2.4-noble — run after touching C or platform-conditional code |
+| `make check` | All of the above |
+| `make format` | swift-format in place (fixes lint failures) |
 
 Run `make lint` and `make test` after the final edit; run `make test-pty` and `make linux-ci` after
 changing anything in the C targets or platform-conditional code.
 
-Run a subset of tests:
+Run a suite or a single test:
 
 ```bash
-swift test -Xswiftc -warnings-as-errors --filter SelectionMenuTests            # one suite
-swift test -Xswiftc -warnings-as-errors --filter PrompterTests/<testFunction>   # one test
+swift test -Xswiftc -warnings-as-errors --filter SelectionMenuTests
+swift test -Xswiftc -warnings-as-errors --filter PrompterTests/<testFunction>
 ```
 
 ## Architecture notes
@@ -61,6 +61,8 @@ swift test -Xswiftc -warnings-as-errors --filter PrompterTests/<testFunction>   
 
 ## Rules
 
+- Never use inline comments in source, tests, scripts, configuration, or code samples in documentation.
+  Put explanations in surrounding prose; retain API documentation and required tool directives.
 - **Decide from `TerminalEnvironment`, never from globals.** Every component takes a `Terminal`, so
   tests construct the environment they need. Do not call `isatty`/`getenv` outside
   `TerminalEnvironment.current()`.

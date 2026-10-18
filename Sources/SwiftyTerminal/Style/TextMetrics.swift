@@ -10,8 +10,6 @@ public enum TextMetrics {
         return sanitized(text, preservingStyles: false, removingControls: false)
     }
 
-    // A line renderer may retain SGR colors/attributes and OSC 8 links, but never cursor
-    // commands, terminal queries, title changes, or incomplete escape sequences.
     static func sanitized(_ text: String, preservingStyles: Bool = true, removingControls: Bool = true) -> String {
         let scalars = Array(text.unicodeScalars)
         var result = String.UnicodeScalarView()

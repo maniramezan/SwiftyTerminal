@@ -8,11 +8,8 @@ let package = Package(
         .macOS(.v15)
     ],
     products: [
-        // Colors, prompts, progress and formatted output. No system-library dependencies.
         .library(name: "SwiftyTerminal", targets: ["SwiftyTerminal"]),
-        // libedit-backed line editing (history, tab completion) for REPL-style commands.
         .library(name: "SwiftyTerminalLineEditor", targets: ["SwiftyTerminalLineEditor"]),
-        // `ScriptedTerminal`, a fake terminal for testing prompts and progress output.
         .library(name: "SwiftyTerminalTesting", targets: ["SwiftyTerminalTesting"]),
     ],
     dependencies: [
@@ -30,7 +27,6 @@ let package = Package(
             dependencies: ["CSwiftyTerminalLineEditor"]
         ),
         .target(name: "SwiftyTerminalTesting", dependencies: ["SwiftyTerminal"]),
-        // A tour of every component; also what `Scripts/test-pty.py` drives in a real PTY.
         .executableTarget(name: "swifty-terminal-demo", dependencies: ["SwiftyTerminal", "SwiftyTerminalLineEditor"]),
         .testTarget(
             name: "SwiftyTerminalTests",

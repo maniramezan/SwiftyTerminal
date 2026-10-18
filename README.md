@@ -22,13 +22,15 @@ Requires Swift 6.2 and macOS 15 or Linux.
 
 ```swift
 let prompter = Prompter()
-let scheme = prompter.ask("Xcode scheme", default: "MyApp")                 // free text
-let password = prompter.askSecret("Keystore password")                       // hidden input
-let upload = prompter.confirm("Upload to TestFlight?", default: false)       // one key: y / n
+let scheme = prompter.ask("Xcode scheme", default: "MyApp")
+let password = prompter.askSecret("Keystore password")
+let upload = prompter.confirm("Upload to TestFlight?", default: false)
 let action = prompter.askKey("Tests failed", keys: ["r", "s", "a"], default: "r")
 let track = prompter.choose("Play track", options: ["internal", "beta", "production"], default: 0)
 let devices = prompter.chooseMany("Devices", options: deviceNames, defaults: [0])
 ```
+
+`ask` reads free text, `askSecret` hides input, and `confirm` accepts a single `y` or `n` key.
 
 On a terminal, `choose` and `chooseMany` are arrow-key menus (radio buttons and checkboxes) with
 `/` to filter long lists, and they collapse to a one-line answer when done. When input is redirected
@@ -59,12 +61,13 @@ let steps = StepList(["Build", "Test", "Upload"])
 await steps.start("Build"); await steps.succeed("Build")
 await steps.finish()
 
-let tail = LiveTail("xcodebuild", visibleLineCount: 5)   // last N lines, full output on failure
+let tail = LiveTail("xcodebuild", visibleLineCount: 5)
 await tail.start()
 for try await line in output { await tail.append(line + "\n") }
 await tail.succeed()
 ```
 
+The live tail displays the last five lines and replays retained output on failure.
 Live tails bound retained output by line and byte count and coalesce redraws. Secret prompts preserve
 leading and trailing spaces in passwords.
 
@@ -74,7 +77,7 @@ and live tails write plain lines that read well in CI logs.
 ## Output
 
 ```swift
-let console = Console(colorMode: options.color)   // .auto, .always, .never
+let console = Console(colorMode: options.color)
 console.header("Doctor")
 console.check("Xcode 26.1", passed: true)
 console.keyValue("Shipfile", path)
@@ -83,6 +86,7 @@ console.table(headers: ["Device", "State"], rows: rows)
 console.alert(.error, title: "Upload failed", lines: [reason], nextSteps: ["Run shipit doctor"])
 ```
 
+`Console` accepts `.auto`, `.always`, or `.never` for its color mode.
 Color follows `NO_COLOR`, `FORCE_COLOR`, `TERM=dumb` and whether the stream is a terminal, decided per
 stream. Glyphs and box drawing fall back to ASCII when the effective locale is not UTF-8
 (`LC_ALL`, then `LC_CTYPE`, then `LANG`). `TextMetrics` measures
@@ -91,10 +95,14 @@ and truncates by display width, so CJK text and emoji line up.
 ## Development
 
 ```bash
-make check      # lint + tests with coverage gate + real-PTY tests + DocC + Linux (Docker)
-make demo       # tour every component
-make docc       # all three products, with API summary and parameter completeness checks
+make check
+make demo
+make docc
 ```
+
+`make check` runs lint, tests with the coverage gate, real-PTY tests, DocC, and Linux validation
+through Docker. `make demo` tours every component. `make docc` documents all three products and
+checks API summaries and parameters.
 
 CI runs lint, unit tests with a 90% Swift line-coverage gate on macOS, unit and real-PTY tests on
 Linux (Swift 6.2.4 and 6.4.1), and builds the DocC site, which is published to

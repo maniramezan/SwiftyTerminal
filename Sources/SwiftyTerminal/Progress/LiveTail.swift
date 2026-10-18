@@ -94,7 +94,6 @@ public actor LiveTail {
     public func append(_ text: String) {
         guard !finished else { return }
         if !isInteractive {
-            // Preserve every byte and partial chunk in redirected logs without buffering it.
             terminal.write(text, to: stream)
             if !text.isEmpty { partialLine = text.hasSuffix("\n") ? [] : [1] }
             return
@@ -170,7 +169,6 @@ public actor LiveTail {
     }
 
     private func recordPartialLine() {
-        // Drop any incomplete UTF-8 tail before adding an ASCII truncation marker.
         let marker = partialWasTruncated ? String(" [truncated]".prefix(maximumRetainedBytes)) : ""
         let budget = max(0, maximumRetainedBytes - marker.utf8.count)
         var bytes = Array(partialLine.prefix(budget))
@@ -185,7 +183,6 @@ public actor LiveTail {
             captured[capturedStart] = ""
             capturedStart += 1
         }
-        // Compact occasionally, rather than shifting all retained lines for each append.
         if capturedStart > 1024 && capturedStart >= captured.count / 2 {
             captured.removeFirst(capturedStart)
             capturedStart = 0

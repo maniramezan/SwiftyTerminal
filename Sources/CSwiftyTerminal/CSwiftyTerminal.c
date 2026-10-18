@@ -29,7 +29,6 @@ int st_isatty(int fd) {
     return isatty(fd);
 }
 
-// Expected length of a UTF-8 sequence from its lead byte; 1 for ASCII or invalid bytes.
 static int st_utf8_length(unsigned char lead) {
     if (lead >= 0xF0 && lead <= 0xF4) return 4;
     if (lead >= 0xE0) return lead <= 0xEF ? 3 : 1;
@@ -37,8 +36,6 @@ static int st_utf8_length(unsigned char lead) {
     return 1;
 }
 
-// A byte read while checking whether Escape started a sequence but that belongs to the next
-// key press (Escape, then Enter typed quickly).
 static int st_pending_byte = -1;
 
 static int st_read_byte(unsigned char *byte) {
@@ -50,8 +47,6 @@ static int st_read_byte(unsigned char *byte) {
     return read(STDIN_FILENO, byte, 1) == 1 ? 1 : 0;
 }
 
-// Serialize terminal input across StandardTerminal values. Recursive locking lets a question
-// hold raw mode while individual key reads enter it again on the same thread.
 static pthread_once_t st_input_once = PTHREAD_ONCE_INIT;
 static pthread_mutex_t st_input_mutex;
 static struct termios st_input_original;
@@ -79,7 +74,6 @@ static void st_input_signalled(int signal_number) {
     int saved_errno = errno;
     st_input_interrupted = 1;
     st_input_restore();
-    // Restore the host's disposition before redelivery, including custom signal handlers.
     raise(signal_number);
     errno = saved_errno;
 }
@@ -121,7 +115,6 @@ static int st_input_enter(int raw) {
     }
     st_input_interrupted = 0;
     for (size_t i = 0; i < 3; i++) {
-        // An ignored signal must remain ignored rather than interrupting the question.
         if (st_input_previous[i].sa_handler != SIG_IGN &&
             sigaction(st_input_signals[i], &action, NULL) != 0) {
             st_input_restore();
@@ -157,7 +150,6 @@ int st_read_key(unsigned char *buffer, int capacity) {
     if (count == 1) {
         struct pollfd input = {.fd = STDIN_FILENO, .events = POLLIN};
         if (buffer[0] == 27) {
-            // Collect the rest of a CSI/SS3 sequence; a lone Escape has nothing pending.
             unsigned char next;
             if (count < capacity && poll(&input, 1, 40) > 0 && read(STDIN_FILENO, &next, 1) == 1) {
                 if (next == '[' || next == 'O') {
@@ -189,7 +181,6 @@ char *st_read_secret_line_with_prompt(const char *prompt, int fd) {
     struct termios settings;
     int is_terminal = tcgetattr(STDIN_FILENO, &settings) == 0;
     int hidden = is_terminal && st_input_enter(0);
-    // Never read a password with echo enabled after a terminal setup failure.
     if (is_terminal && !hidden) return NULL;
 
     if (prompt) {
