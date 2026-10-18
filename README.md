@@ -1,5 +1,7 @@
 # SwiftyTerminal
 
+[![CI](https://github.com/maniramezan/SwiftyTerminal/actions/workflows/ci.yml/badge.svg)](https://github.com/maniramezan/SwiftyTerminal/actions/workflows/ci.yml)
+
 Rich terminal UX for Swift command-line tools: colors, prompts, spinners, progress, step lists,
 live command output, tables and alert boxes, with plain-text fallbacks for CI and redirected I/O.
 Shared by amoo and ShipIt.
@@ -85,6 +87,11 @@ and truncates by display width, so CJK text and emoji line up.
 ## Development
 
 ```bash
-make check      # lint + unit tests + real-PTY tests + Linux (Docker)
+make check      # lint + tests with coverage gate + real-PTY tests + DocC + Linux (Docker)
 make demo       # tour every component
 ```
+
+CI runs lint, unit tests with a 90% Swift line-coverage gate on macOS, unit and real-PTY tests on
+Linux (Swift 6.2.4 and 6.4.1), and builds the DocC site, which is published to
+[GitHub Pages](https://maniramezan.github.io/SwiftyTerminal/) from `main`. Dependabot updates Swift
+packages and GitHub Actions weekly.

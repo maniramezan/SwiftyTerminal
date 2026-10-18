@@ -31,8 +31,13 @@ public actor LiveTail {
     /// Creates a tail; call ``start()`` before appending.
     ///
     /// - Parameters:
+    ///   - title: What is running, shown next to the spinner and in the final line.
+    ///   - terminal: Where output is written.
+    ///   - stream: The stream to draw on; stderr by default.
+    ///   - colorMode: Whether to style output.
     ///   - visibleLineCount: Output lines shown under the title.
     ///   - retainedLineCount: Output lines kept for the failure report.
+    ///   - interval: Time between animation frames.
     public init(
         _ title: String,
         terminal: any Terminal = StandardTerminal(),

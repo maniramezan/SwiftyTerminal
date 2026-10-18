@@ -24,6 +24,8 @@ terminal belongs here rather than in a consumer, so the tools look and behave al
 make build       # swift build -Xswiftc -warnings-as-errors
 make test        # Swift Testing unit tests
 make test-pty    # real pseudo-terminal: raw keys, hidden input, termios restored
+make coverage    # tests with coverage; fails below 90% Swift line coverage (C is covered by test-pty)
+make docc        # DocC with warnings as errors: document every public symbol and parameter
 make lint        # swift-format lint --strict (run after the final edit)
 make linux-ci    # Docker, swift:6.2.4-noble — run after touching C or #if os code
 make check       # all of the above

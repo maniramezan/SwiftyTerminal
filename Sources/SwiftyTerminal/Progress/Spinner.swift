@@ -3,7 +3,7 @@
 /// The spinner draws on stderr (so `--json` stdout stays clean) and only when that stream is a
 /// terminal; otherwise every call is a no-op. It waits `delay` before drawing, so operations
 /// that finish quickly never flicker. Always end it with ``succeed(_:)``, ``fail(_:)`` or
-/// ``stop()``, or use ``withSpinner(_:terminal:colorMode:showsResult:operation:)``.
+/// ``stop()``, or use ``withSpinner(_:terminal:colorMode:showsResult:isolation:operation:)``.
 public actor Spinner {
     private let terminal: any Terminal
     private let stream: TerminalStream
