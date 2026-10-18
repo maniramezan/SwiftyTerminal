@@ -1,4 +1,4 @@
-.PHONY: help build test test-pty coverage docc lint format demo check linux-shell linux-build linux-test linux-ci
+.PHONY: help build test test-pty coverage docc test-tooling lint format demo check linux-shell linux-build linux-test linux-ci
 
 MINIMUM_LINE_COVERAGE ?= 90
 
@@ -32,9 +32,15 @@ coverage:
 	swift test --enable-code-coverage -Xswiftc -warnings-as-errors
 	python3 -I Scripts/check-coverage.py "$$(swift test --enable-code-coverage --show-codecov-path)" "$(CURDIR)" "$(MINIMUM_LINE_COVERAGE)"
 
-docc:
-	swift package --allow-writing-to-directory docs generate-documentation --target SwiftyTerminal \
-	  --warnings-as-errors --output-path docs --transform-for-static-hosting --hosting-base-path SwiftyTerminal
+test-tooling:
+	python3 -I Scripts/test-tooling.py
+
+docc: test-tooling
+	python3 -I Scripts/check-documentation.py
+	swift package --allow-writing-to-directory docs generate-documentation \
+	  --target SwiftyTerminal --target SwiftyTerminalLineEditor --target SwiftyTerminalTesting \
+	  --enable-experimental-combined-documentation --warnings-as-errors \
+	  --output-path docs --transform-for-static-hosting --hosting-base-path SwiftyTerminal
 	Scripts/docc-root-redirect.sh docs
 
 lint:

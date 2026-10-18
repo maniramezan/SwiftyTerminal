@@ -4,7 +4,7 @@ import Foundation
 ///
 /// On an interactive terminal, yes/no and short numbered choices take a single key press and
 /// choices become arrow-key menus that collapse to a one-line answer. When input is
-/// redirected or `TERM=dumb`, every question falls back to line-based input, so scripted runs
+/// redirected, questions use line-based input; `TERM=dumb` uses numbered choices, so scripted runs
 /// (`printf '1\ny\n' | tool`) keep working.
 public struct Prompter: Prompting {
     /// Where questions are written and answers read.
@@ -17,6 +17,10 @@ public struct Prompter: Prompting {
     public var menuHeight = 8
 
     /// Creates a prompter on `terminal` with styling per `colorMode`.
+    ///
+    /// - Parameters:
+    ///   - terminal: The terminal used for input, output, and capability decisions.
+    ///   - colorMode: Whether styling follows the environment, is forced on, or is disabled.
     public init(terminal: any Terminal = StandardTerminal(), colorMode: ColorMode = .auto) {
         self.terminal = terminal
         self.styler = Styler(isEnabled: terminal.environment.isColorEnabled(for: .standardOutput, mode: colorMode))
@@ -27,10 +31,21 @@ public struct Prompter: Prompting {
         terminal.environment.supportsCursorControl(on: .standardOutput)
     }
 
+    /// Prints a status or section line.
+    ///
+    /// - Parameters:
+    ///   - text: The text to display.
     public func say(_ text: String) {
         terminal.writeLine(styler.apply(text, .bold, .cyan))
     }
 
+    /// Asks for free text. Enter keeps `defaultValue`; `validate` returns an error message to
+    /// ask again, or nil to accept.
+    ///
+    /// - Parameters:
+    ///   - prompt: The question or input prefix displayed before reading an answer.
+    ///   - defaultValue: The text accepted when the user submits an empty line.
+    ///   - validate: Returns an error message to retry the question, or nil to accept the answer.
     public func ask(_ prompt: String, default defaultValue: String?, validate: ((String) -> String?)?) -> String? {
         let promptLine = "\(prompt)\(defaultValue.map { " [\($0)]" } ?? ""): "
         while true {
@@ -48,15 +63,23 @@ public struct Prompter: Prompting {
         }
     }
 
+    /// Asks for text without echoing it (passwords, keys).
+    ///
+    /// - Parameters:
+    ///   - prompt: The question or input prefix displayed before reading an answer.
     public func askSecret(_ prompt: String) -> String? {
-        terminal.write("\(prompt): ")
-        let secret = terminal.readSecret()?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let secret = terminal.readSecret(after: "\(prompt): ", to: .standardOutput)
         if !terminal.environment.isInputTerminal {
             terminal.writeLine()
         }
         return secret
     }
 
+    /// Asks a yes/no question; one key press on a terminal, Enter keeps `defaultAnswer`.
+    ///
+    /// - Parameters:
+    ///   - prompt: The question or input prefix displayed before reading an answer.
+    ///   - defaultAnswer: The answer accepted when Enter is pressed.
     public func confirm(_ prompt: String, default defaultAnswer: Bool) -> Bool? {
         let promptLine = "\(prompt) [\(defaultAnswer ? "Y/n" : "y/N")]: "
         while true {
@@ -76,15 +99,25 @@ public struct Prompter: Prompting {
         }
     }
 
+    /// Asks for one key out of `keys` (case-insensitive), e.g. `[r]etry / [s]kip / [a]bort`.
+    /// Enter keeps `defaultKey`. Returns the matching element of `keys`.
+    ///
+    /// - Parameters:
+    ///   - prompt: The question or input prefix displayed before reading an answer.
+    ///   - keys: Allowed answer keys, matched case-insensitively.
+    ///   - defaultKey: The key accepted on Enter; matched case-insensitively against the allowed keys.
     public func askKey(_ prompt: String, keys: [Character], default defaultKey: Character?) -> Character? {
         guard !keys.isEmpty else { return nil }
-        let labels = keys.map { $0 == defaultKey ? String($0).uppercased() : String($0).lowercased() }
+        let normalizedDefault = defaultKey.flatMap { value in
+            keys.first { String($0).lowercased() == String(value).lowercased() }
+        }
+        let labels = keys.map { $0 == normalizedDefault ? String($0).uppercased() : String($0).lowercased() }
         let promptLine = "\(prompt) [\(labels.joined(separator: "/"))]: "
         while true {
             guard let answer = readAnswer(after: promptLine, singleKey: true) else { return nil }
             let match =
                 answer.isEmpty
-                ? defaultKey : keys.first { String($0).lowercased() == answer.lowercased() }
+                ? normalizedDefault : keys.first { String($0).lowercased() == answer.lowercased() }
             acknowledge(promptLine: promptLine, typed: answer, answer: match.map(String.init) ?? answer)
             if let match {
                 return match
@@ -93,6 +126,12 @@ public struct Prompter: Prompting {
         }
     }
 
+    /// Asks for one option (a radio-button menu on a terminal, a numbered list otherwise).
+    ///
+    /// - Parameters:
+    ///   - prompt: The question or input prefix displayed before reading an answer.
+    ///   - options: The choices in their original display order.
+    ///   - index: The initially focused zero-based option index; invalid values select the first option.
     public func choose(_ prompt: String, options: [String], default index: Int) -> Int? {
         guard !options.isEmpty else { return nil }
         let defaultIndex = options.indices.contains(index) ? index : 0
@@ -103,7 +142,12 @@ public struct Prompter: Prompting {
         while true {
             let promptLine = "Choose 1-\(options.count) [\(defaultIndex + 1)]: "
             guard let answer = readAnswer(after: promptLine, singleKey: options.count <= 9) else { return nil }
-            let choice = answer.isEmpty ? defaultIndex : Int(answer).map { $0 - 1 }
+            let choice =
+                answer.isEmpty
+                ? defaultIndex
+                : Int(answer).flatMap { value in
+                    (1...options.count).contains(value) ? value - 1 : nil
+                }
             acknowledge(promptLine: promptLine, typed: answer, answer: choice.map { String($0 + 1) } ?? answer)
             if let choice, options.indices.contains(choice) {
                 return choice
@@ -112,9 +156,16 @@ public struct Prompter: Prompting {
         }
     }
 
+    /// Asks for one or more options (a checkbox menu on a terminal, `1,3` / `2-4` / `all`
+    /// otherwise). Returns sorted indexes.
+    ///
+    /// - Parameters:
+    ///   - prompt: The question or input prefix displayed before reading an answer.
+    ///   - options: The choices in their original display order.
+    ///   - defaults: Options initially selected. Invalid values are ignored and duplicates are removed.
     public func chooseMany(_ prompt: String, options: [String], defaults: [Int]) -> [Int]? {
         guard !options.isEmpty else { return nil }
-        let validDefaults = defaults.filter { options.indices.contains($0) }
+        let validDefaults = Set(defaults.filter { options.indices.contains($0) }).sorted()
         if usesInteractiveMenus {
             return runMenu(prompt, options: options, defaults: validDefaults, allowsMultiple: true)
         }

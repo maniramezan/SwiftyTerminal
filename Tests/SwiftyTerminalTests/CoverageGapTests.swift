@@ -38,7 +38,7 @@ struct ConsoleTests {
         #expect(Table(headers: [], rows: []).render(styler: .plain, unicode: true).isEmpty)
         #expect(
             Table(headers: [], rows: [["a", "b"], ["ccc"]]).render(styler: .plain, unicode: true) == [
-                "a    b", "ccc  ",
+                "a    b", "ccc",
             ]
         )
     }

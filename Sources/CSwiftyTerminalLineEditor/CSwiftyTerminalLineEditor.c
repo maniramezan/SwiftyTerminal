@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#if __has_include(<editline/readline.h>) && __has_include(<histedit.h>)
+#if defined(__APPLE__) && __has_include(<editline/readline.h>) && __has_include(<histedit.h>)
 #include <editline/readline.h>
 #define ST_LE_HAS_LIBEDIT 1
 #else

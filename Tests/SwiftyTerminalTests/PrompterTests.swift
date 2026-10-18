@@ -82,8 +82,8 @@ struct PrompterTests {
 
     @Test("Secrets are read through the hidden-input path")
     func secret() {
-        let terminal = ScriptedTerminal(.secret(" hunter2 \n"))
-        #expect(Prompter(terminal: terminal).askSecret("Password") == "hunter2")
+        let terminal = ScriptedTerminal(.secret(" hunter2 "))
+        #expect(Prompter(terminal: terminal).askSecret("Password") == " hunter2 ")
         #expect(!terminal.output().contains("hunter2"))
     }
 
@@ -176,5 +176,41 @@ struct PrompterMenuTests {
     func endOfKeys() {
         let terminal = ScriptedTerminal(input: [])
         #expect(Prompter(terminal: terminal).choose("Platform", options: ["A"], default: 0) == nil)
+    }
+}
+
+@Suite("Prompt boundary regressions")
+struct PromptBoundaryTests {
+    @Test("Secrets preserve every character returned by the terminal")
+    func secretWhitespace() {
+        let terminal = ScriptedTerminal(.secret(" \t pass \t "))
+        #expect(Prompter(terminal: terminal).askSecret("Password") == " \t pass \t ")
+        #expect(!terminal.output().contains("pass"))
+    }
+
+    @Test("Extreme numbered answers retry without integer overflow", arguments: [Int.min, Int.max, 0, -1])
+    func extremeChoice(_ value: Int) {
+        let terminal = ScriptedTerminal(
+            input: [.line(String(value)), .line("1")],
+            environment: ScriptedTerminal.redirected
+        )
+        #expect(Prompter(terminal: terminal).choose("Pick", options: ["A"], default: 0) == 0)
+        #expect(terminal.remainingInput.isEmpty)
+    }
+
+    @Test("Key defaults are resolved through allowed keys")
+    func defaultKey() {
+        let terminal = ScriptedTerminal(.key(.enter), .key(.character("y")), .key(.enter))
+        let prompter = Prompter(terminal: terminal)
+        #expect(prompter.askKey("Pick", keys: ["y", "n"], default: "x") == "y")
+        #expect(prompter.askKey("Pick", keys: ["y", "n"], default: "Y") == "y")
+    }
+
+    @Test("Redirected multiple defaults are sorted and unique")
+    func multipleDefaults() {
+        let terminal = ScriptedTerminal(input: [.line("")], environment: ScriptedTerminal.redirected)
+        #expect(
+            Prompter(terminal: terminal).chooseMany("Pick", options: ["A", "B"], defaults: [1, -1, 0, 1, 2]) == [0, 1]
+        )
     }
 }

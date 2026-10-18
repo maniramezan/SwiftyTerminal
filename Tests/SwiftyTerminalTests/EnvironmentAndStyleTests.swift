@@ -109,3 +109,27 @@ struct KeyTests {
         #expect(Key(bytes: bytes) == expected)
     }
 }
+
+@Suite("Environment and escape regressions")
+struct EnvironmentBoundaryTests {
+    @Test("Locale variables follow precedence and ignore empty values")
+    func localePrecedence() {
+        #expect(!TerminalEnvironment(variables: ["LC_ALL": "C", "LANG": "en_US.UTF-8"]).supportsUnicode)
+        #expect(!TerminalEnvironment(variables: ["LC_CTYPE": "C", "LANG": "en_US.UTF-8"]).supportsUnicode)
+        #expect(TerminalEnvironment(variables: ["LC_ALL": "", "LC_CTYPE": "C.UTF-8", "LANG": "C"]).supportsUnicode)
+    }
+
+    @Test("Invisible formats and emoji variations have explicit widths")
+    func widths() {
+        #expect(TextMetrics.displayWidth("\u{200B}\u{200D}\u{FE0F}") == 0)
+        #expect(TextMetrics.displayWidth("1\u{20E3}") == 2)
+        #expect(TextMetrics.displayWidth("☀\u{FE0E}") == 1)
+        #expect(TextMetrics.displayWidth("👩‍💻") == 2)
+        #expect(TextMetrics.displayWidth("\u{17000}") == 2)
+    }
+
+    @Test("A custom ellipsis cannot inject terminal controls")
+    func ellipsis() {
+        #expect(TextMetrics.truncate("long text", toWidth: 5, ellipsis: "\u{1B}[2A!\n") == "long!")
+    }
+}

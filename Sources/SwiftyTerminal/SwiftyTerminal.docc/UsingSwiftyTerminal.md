@@ -1,0 +1,88 @@
+# Using SwiftyTerminal
+
+Build testable prompts and progress indicators while keeping machine-readable output separate.
+
+## Create a conversation
+
+Import `SwiftyTerminal` in your executable target. Add `SwiftyTerminalTesting` to a test target when
+you want to exercise rendering or input without a terminal.
+
+```swift
+import SwiftyTerminal
+import SwiftyTerminalTesting
+
+let terminal = ScriptedTerminal(
+    input: [.line("2")],
+    environment: ScriptedTerminal.redirected
+)
+let answer = Prompter(terminal: terminal).choose("Platform", options: ["iOS", "Android"], default: 0)
+assert(answer == 1)
+```
+
+``Prompter/askSecret(_:)`` preserves spaces in credentials. Numbered questions reject invalid
+answers and retry. Empty answers use valid defaults; multi-selection results are sorted and unique.
+Cancellation and EOF return nil. Ctrl-C typed in a raw menu is a cancellation key; termination
+signals delivered to a process restore its input mode before the previous signal disposition runs.
+Free-text input uses canonical terminal input and its normal signal behavior.
+
+## Keep progress on stderr
+
+``Console`` and prompts default to stdout. Progress indicators default to stderr, allowing a
+consumer to print JSON on stdout while stderr remains attached to the terminal. Size lookup follows
+the chosen stream and falls back to another attached standard stream when necessary.
+
+```swift
+import SwiftyTerminal
+import SwiftyTerminalTesting
+
+func showProgress() async {
+    let terminal = ScriptedTerminal(input: [], environment: ScriptedTerminal.redirected)
+    let bar = ProgressBar("Uploading", terminal: terminal)
+    await bar.update(completed: 3, total: 10)
+    await bar.succeed("Uploaded")
+    assert(terminal.output().isEmpty)
+    assert(terminal.output(.standardError).contains("Uploaded"))
+}
+```
+
+Without a terminal, a ProgressBar writes only its final result and a Spinner writes nothing.
+StepList writes transitions, while LiveTail forwards command chunks immediately. With a terminal,
+LiveTail limits retained lines and bytes, handles carriage-return progress updates, and coalesces
+redraws. A very long line is truncated in retained output. Set `maximumRetainedBytes` when you need
+a different memory limit.
+
+## End asynchronous indicators
+
+Prefer ``withSpinner(_:terminal:colorMode:showsResult:isolation:operation:)`` for one operation;
+it cleans up on both success and errors, including cooperative cancellation. With manually managed
+indicators, call `stop`, `succeed`, `fail`, or `finish` before releasing the last reference. Cancellation
+of a calling task alone does not stop an unstructured animation task. Avoid overlapping independent
+live regions on the same stream; coordinate progress and prompt ownership in the consumer.
+
+```swift
+import SwiftyTerminal
+import SwiftyTerminalTesting
+
+func inspect() async throws -> Int {
+    let terminal = ScriptedTerminal(input: [], environment: ScriptedTerminal.redirected)
+    return try await withSpinner("Inspecting", terminal: terminal) {
+        try Task.checkCancellation()
+        return 42
+    }
+}
+```
+
+## Choose terminal capabilities
+
+``TerminalEnvironment`` decides color per stream. An explicit ``ColorMode`` overrides the automatic
+policy. Unicode follows the first non-empty locale in `LC_ALL`, `LC_CTYPE`, `LANG` order.
+`TERM=dumb` uses ASCII glyphs, plain progress, and numbered choices. Short questions can still read
+a single key when stdin is a terminal; redirected stdin always uses complete lines.
+
+Live regions reserve a row for their final newline and remove cursor commands embedded in content.
+Safe SGR styling and OSC 8 hyperlinks are retained. Tables and alerts use display width rather than
+Swift character counts. Emoji presentation can differ between terminal applications.
+
+See the [testing product](https://maniramezan.github.io/SwiftyTerminal/documentation/swiftyterminaltesting)
+and [line-editor product](https://maniramezan.github.io/SwiftyTerminal/documentation/swiftyterminallineeditor)
+for their complete API references and platform behavior.

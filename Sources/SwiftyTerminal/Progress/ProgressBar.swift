@@ -4,6 +4,7 @@
 /// or ``fail(_:)`` is written, so logs record the outcome without a line per update.
 public actor ProgressBar {
     private let terminal: any Terminal
+    private let stream: TerminalStream
     private let styler: Styler
     private let symbols: Symbols
     private let width: Int
@@ -18,6 +19,14 @@ public actor ProgressBar {
     public nonisolated let isEnabled: Bool
 
     /// Creates a bar at 0%; nothing is drawn until the first ``update(fraction:message:)``.
+    ///
+    /// - Parameters:
+    ///   - message: Text displayed beside the progress indicator or status glyph.
+    ///   - terminal: The terminal used for input, output, and capability decisions.
+    ///   - stream: The standard stream whose capabilities or output to use.
+    ///   - colorMode: Whether styling follows the environment, is forced on, or is disabled.
+    ///   - width: The desired display width in terminal character cells.
+    ///   - minimumRedrawInterval: The minimum delay between progress updates; completion is drawn immediately.
     public init(
         _ message: String,
         terminal: any Terminal = StandardTerminal(),
@@ -28,6 +37,7 @@ public actor ProgressBar {
     ) {
         self.message = message
         self.terminal = terminal
+        self.stream = stream
         self.styler = Styler(isEnabled: terminal.environment.isColorEnabled(for: stream, mode: colorMode))
         self.symbols = .for(terminal.environment)
         self.width = max(5, width)
@@ -37,8 +47,12 @@ public actor ProgressBar {
     }
 
     /// Sets progress to `fraction` (clamped to 0...1) and optionally a new message.
+    ///
+    /// - Parameters:
+    ///   - fraction: Progress from zero to one. Values are clamped; NaN is treated as zero.
+    ///   - message: A replacement message, or nil to keep the existing message.
     public func update(fraction: Double, message: String? = nil) {
-        self.fraction = min(max(fraction, 0), 1)
+        self.fraction = fraction.isNaN ? 0 : min(max(fraction, 0), 1)
         if let message { self.message = message }
         guard isEnabled else { return }
         let now = ContinuousClock.now
@@ -48,16 +62,27 @@ public actor ProgressBar {
     }
 
     /// Sets progress to `completed` out of `total`.
+    ///
+    /// - Parameters:
+    ///   - completed: The amount of work already completed.
+    ///   - total: The total amount of work; non-positive totals show zero progress.
+    ///   - message: A replacement message, or nil to keep the existing message.
     public func update(completed: Double, total: Double, message: String? = nil) {
         update(fraction: total > 0 ? completed / total : 0, message: message)
     }
 
     /// Leaves `✔ message (elapsed)`.
+    ///
+    /// - Parameters:
+    ///   - message: A replacement message, or nil to keep the existing message.
     public func succeed(_ message: String? = nil) {
         finish(symbol: styler.green(symbols.success), message: message)
     }
 
     /// Leaves `✖ message (elapsed)`.
+    ///
+    /// - Parameters:
+    ///   - message: A replacement message, or nil to keep the existing message.
     public func fail(_ message: String? = nil) {
         finish(symbol: styler.red(symbols.failure), message: message)
     }
@@ -72,7 +97,7 @@ public actor ProgressBar {
         if isEnabled {
             region.commit([summary])
         } else {
-            terminal.writeLine(summary, to: .standardError)
+            terminal.writeLine(summary, to: stream)
         }
     }
 

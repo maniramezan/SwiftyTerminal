@@ -65,6 +65,9 @@ for try await line in output { await tail.append(line + "\n") }
 await tail.succeed()
 ```
 
+Live tails bound retained output by line and byte count and coalesce redraws. Secret prompts preserve
+leading and trailing spaces in passwords.
+
 Spinners wait 150 ms before drawing, so fast operations never flicker. Without a terminal, step lists
 and live tails write plain lines that read well in CI logs.
 
@@ -81,7 +84,8 @@ console.alert(.error, title: "Upload failed", lines: [reason], nextSteps: ["Run 
 ```
 
 Color follows `NO_COLOR`, `FORCE_COLOR`, `TERM=dumb` and whether the stream is a terminal, decided per
-stream. Glyphs and box drawing fall back to ASCII when the locale is not UTF-8. `TextMetrics` measures
+stream. Glyphs and box drawing fall back to ASCII when the effective locale is not UTF-8
+(`LC_ALL`, then `LC_CTYPE`, then `LANG`). `TextMetrics` measures
 and truncates by display width, so CJK text and emoji line up.
 
 ## Development
@@ -89,6 +93,7 @@ and truncates by display width, so CJK text and emoji line up.
 ```bash
 make check      # lint + tests with coverage gate + real-PTY tests + DocC + Linux (Docker)
 make demo       # tour every component
+make docc       # all three products, with API summary and parameter completeness checks
 ```
 
 CI runs lint, unit tests with a 90% Swift line-coverage gate on macOS, unit and real-PTY tests on

@@ -54,8 +54,8 @@ swift test -Xswiftc -warnings-as-errors --filter PrompterTests/<testFunction>   
   exercises them (against `swifty-terminal-demo`), which is why `make coverage` gates Swift lines only.
 - **Coverage gate:** `make coverage` fails below 90% Swift line coverage (`MINIMUM_LINE_COVERAGE`);
   new Swift code needs tests in `Tests/SwiftyTerminalTests`.
-- **Public API is documented under `--warnings-as-errors`:** `make docc` fails on any undocumented
-  public symbol or parameter. `docs/` is generated and git-ignored.
+- **Public API is checked by `Scripts/check-documentation.py` and DocC:** `make docc` fails on any source-declared public API without a summary or parameter description,
+  and on DocC warnings. Compiler-synthesized and external declarations are excluded. `docs/` is generated and git-ignored.
 - **Platforms:** macOS 15+ and Linux (Swift 6.2, language mode 6). `SwiftyTerminalLineEditor` links
   libedit only on macOS and falls back to `getline` elsewhere, so `#if os` changes need `make linux-ci`.
 

@@ -1,7 +1,7 @@
 import Synchronization
 import SwiftyTerminal
 
-/// A ``Terminal`` that replays scripted input and records everything written, for testing
+/// A `SwiftyTerminal.Terminal` that replays scripted input and records everything written, for testing
 /// prompts and progress output without a real TTY.
 ///
 /// Input is consumed in order. A read whose kind does not match the next scripted input (a
@@ -31,7 +31,9 @@ public final class ScriptedTerminal: Terminal {
         var unexpectedReads: [String] = []
     }
 
+    /// Which streams are terminals and which environment variables apply.
     public let environment: TerminalEnvironment
+    /// Current dimensions.
     public let size: TerminalSize
     private let state: Mutex<State>
 
@@ -39,6 +41,11 @@ public final class ScriptedTerminal: Terminal {
     ///
     /// The default environment is a fully interactive, uncolored, UTF-8 terminal: menus and
     /// single-key prompts are used and output has no style escapes.
+    ///
+    /// - Parameters:
+    ///   - input: User actions to replay in order.
+    ///   - environment: Terminal capabilities and environment variables to use for rendering decisions.
+    ///   - size: Terminal dimensions reported to the components under test.
     public init(
         input: [Input],
         environment: TerminalEnvironment = ScriptedTerminal.interactive,
@@ -50,6 +57,9 @@ public final class ScriptedTerminal: Terminal {
     }
 
     /// Creates a terminal that replays `input`.
+    ///
+    /// - Parameters:
+    ///   - input: User actions to replay in order.
     public convenience init(_ input: Input...) {
         self.init(input: input)
     }
@@ -76,19 +86,31 @@ public final class ScriptedTerminal: Terminal {
     }
 
     /// Everything written to `stream`, escapes included.
+    ///
+    /// - Parameters:
+    ///   - stream: The standard stream whose capabilities or output to use.
     public func output(_ stream: TerminalStream = .standardOutput) -> String {
         state.withLock { $0.output[stream, default: ""] }
     }
 
     /// Everything written to `stream` with escape sequences removed.
+    ///
+    /// - Parameters:
+    ///   - stream: The standard stream whose capabilities or output to use.
     public func plainOutput(_ stream: TerminalStream = .standardOutput) -> String {
         TextMetrics.strippingEscapes(output(stream))
     }
 
+    /// Writes `text` to `stream` immediately.
+    ///
+    /// - Parameters:
+    ///   - text: The text to write to the selected stream.
+    ///   - stream: The standard stream whose capabilities or output to use.
     public func write(_ text: String, to stream: TerminalStream) {
         state.withLock { $0.output[stream, default: ""] += text }
     }
 
+    /// Reads one line without its terminator, or nil at end of input.
     public func readLine() -> String? {
         next("line") { input in
             if case .line(let text) = input { return text }
@@ -96,6 +118,7 @@ public final class ScriptedTerminal: Terminal {
         }
     }
 
+    /// Reads one key press in raw mode, or nil when stdin is not a terminal.
     public func readKey() -> Key? {
         guard environment.isInputTerminal else { return nil }
         return next("key") { input in
@@ -104,6 +127,7 @@ public final class ScriptedTerminal: Terminal {
         }
     }
 
+    /// Reads one line without echoing it, or nil at end of input.
     public func readSecret() -> String? {
         next("secret") { input in
             if case .secret(let text) = input { return text }

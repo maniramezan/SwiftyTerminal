@@ -16,10 +16,17 @@ public actor LiveTail {
     private let symbols: Symbols
     private let visibleLineCount: Int
     private let retainedLineCount: Int
+    private let maximumRetainedBytes: Int
     private let interval: Duration
     private let title: String
     private var captured: [String] = []
-    private var partialLine = ""
+    private var capturedStart = 0
+    private var capturedBytes = 0
+    private var partialLine: [UInt8] = []
+    private var partialWasTruncated = false
+    private var pendingCarriageReturn = false
+    private var lastDraw: ContinuousClock.Instant?
+    private var finished = false
     private var region: LiveRegion
     private var animation: Task<Void, Never>?
     private var frame = 0
@@ -37,7 +44,8 @@ public actor LiveTail {
     ///   - colorMode: Whether to style output.
     ///   - visibleLineCount: Output lines shown under the title.
     ///   - retainedLineCount: Output lines kept for the failure report.
-    ///   - interval: Time between animation frames.
+    ///   - interval: Minimum time between redraws and animation frames.
+    ///   - maximumRetainedBytes: The maximum UTF-8 bytes retained in complete lines and separately in a partial line; at least one.
     public init(
         _ title: String,
         terminal: any Terminal = StandardTerminal(),
@@ -45,7 +53,8 @@ public actor LiveTail {
         colorMode: ColorMode = .auto,
         visibleLineCount: Int = 5,
         retainedLineCount: Int = 2000,
-        interval: Duration = .milliseconds(80)
+        interval: Duration = .milliseconds(80),
+        maximumRetainedBytes: Int = 1_048_576
     ) {
         self.title = title
         self.terminal = terminal
@@ -53,7 +62,8 @@ public actor LiveTail {
         self.styler = Styler(isEnabled: terminal.environment.isColorEnabled(for: stream, mode: colorMode))
         self.symbols = .for(terminal.environment)
         self.visibleLineCount = max(1, visibleLineCount)
-        self.retainedLineCount = max(visibleLineCount, retainedLineCount)
+        self.retainedLineCount = max(1, visibleLineCount, retainedLineCount)
+        self.maximumRetainedBytes = max(1, maximumRetainedBytes)
         self.interval = interval
         self.region = LiveRegion(terminal: terminal, stream: stream)
         self.isInteractive = terminal.environment.supportsCursorControl(on: stream)
@@ -61,7 +71,7 @@ public actor LiveTail {
 
     /// Shows the title and starts animating.
     public func start() {
-        guard startedAt == nil else { return }
+        guard startedAt == nil, !finished else { return }
         startedAt = .now
         if isInteractive {
             redraw()
@@ -73,39 +83,70 @@ public actor LiveTail {
                 }
             }
         } else {
-            terminal.writeLine("\(styler.cyan("→")) \(title)", to: stream)
+            terminal.writeLine("\(styler.cyan(symbols == .unicode ? "→" : ">")) \(title)", to: stream)
         }
     }
 
     /// Adds command output; text may hold several lines or end mid-line.
+    ///
+    /// - Parameters:
+    ///   - text: The text to display.
     public func append(_ text: String) {
-        // "\r\n" is a single Character, so it has to be matched alongside "\n".
-        var pieces = (partialLine + text)
-            .split(omittingEmptySubsequences: false) { $0 == "\n" || $0 == "\r\n" }
-            .map(String.init)
-        partialLine = pieces.removeLast()
-        for line in pieces {
-            record(line)
+        guard !finished else { return }
+        if !isInteractive {
+            // Preserve every byte and partial chunk in redirected logs without buffering it.
+            terminal.write(text, to: stream)
+            if !text.isEmpty { partialLine = text.hasSuffix("\n") ? [] : [1] }
+            return
         }
-        if isInteractive, !pieces.isEmpty {
-            redraw()
+        for byte in text.utf8 {
+            if pendingCarriageReturn {
+                pendingCarriageReturn = false
+                if byte != 10 {
+                    partialLine.removeAll(keepingCapacity: true)
+                    partialWasTruncated = false
+                }
+            }
+            if byte == 13 {
+                pendingCarriageReturn = true
+            } else if byte == 10 {
+                recordPartialLine()
+            } else if partialLine.count < maximumRetainedBytes {
+                partialLine.append(byte)
+            } else {
+                partialWasTruncated = true
+            }
         }
+        let now = ContinuousClock.now
+        if let lastDraw, now - lastDraw < interval { return }
+        redraw()
     }
 
     /// Collapses to `✔ title (elapsed)`.
+    ///
+    /// - Parameters:
+    ///   - message: A replacement message, or nil to keep the existing message.
     public func succeed(_ message: String? = nil) async {
         await finish(symbol: styler.green(symbols.success), message: message, report: [])
     }
 
     /// Ends with `✖ title (elapsed)`, preceded on a terminal by the last `reportLineCount`
     /// captured lines (all retained lines when nil).
+    ///
+    /// - Parameters:
+    ///   - message: A replacement message, or nil to keep the existing message.
+    ///   - reportLineCount: The maximum retained lines to include on failure; nil includes all and negative values include none.
     public func fail(_ message: String? = nil, reportLineCount: Int? = nil) async {
+        guard !finished else { return }
         flushPartialLine()
-        let report = isInteractive ? Array(captured.suffix(reportLineCount ?? captured.count)) : []
+        let report =
+            isInteractive ? Array(captured[capturedStart...].suffix(max(0, reportLineCount ?? captured.count))) : []
         await finish(symbol: styler.red(symbols.failure), message: message, report: report)
     }
 
     private func finish(symbol: String, message: String?, report: [String]) async {
+        guard !finished else { return }
+        finished = true
         flushPartialLine()
         animation?.cancel()
         await animation?.value
@@ -120,31 +161,49 @@ public actor LiveTail {
     }
 
     private func flushPartialLine() {
-        guard !partialLine.isEmpty else { return }
-        record(partialLine)
-        partialLine = ""
+        if !isInteractive {
+            if !partialLine.isEmpty { terminal.writeLine(to: stream) }
+            partialLine = []
+        } else if !partialLine.isEmpty || partialWasTruncated {
+            recordPartialLine()
+        }
     }
 
-    private func record(_ line: String) {
-        if isInteractive {
-            captured.append(line)
-            if captured.count > retainedLineCount {
-                captured.removeFirst(captured.count - retainedLineCount)
-            }
-        } else {
-            terminal.writeLine(line, to: stream)
+    private func recordPartialLine() {
+        // Drop any incomplete UTF-8 tail before adding an ASCII truncation marker.
+        let marker = partialWasTruncated ? String(" [truncated]".prefix(maximumRetainedBytes)) : ""
+        let budget = max(0, maximumRetainedBytes - marker.utf8.count)
+        var bytes = Array(partialLine.prefix(budget))
+        while !bytes.isEmpty && String(bytes: bytes, encoding: .utf8) == nil { bytes.removeLast() }
+        let line = String(decoding: bytes, as: UTF8.self) + marker
+        partialLine.removeAll(keepingCapacity: true)
+        partialWasTruncated = false
+        captured.append(line)
+        capturedBytes += line.utf8.count
+        while captured.count - capturedStart > retainedLineCount || capturedBytes > maximumRetainedBytes {
+            capturedBytes -= captured[capturedStart].utf8.count
+            captured[capturedStart] = ""
+            capturedStart += 1
+        }
+        // Compact occasionally, rather than shifting all retained lines for each append.
+        if capturedStart > 1024 && capturedStart >= captured.count / 2 {
+            captured.removeFirst(capturedStart)
+            capturedStart = 0
         }
     }
 
     private func tick() {
-        frame += 1
+        guard !finished else { return }
+        frame = (frame + 1) % symbols.spinnerFrames.count
         redraw()
     }
 
     private func redraw() {
+        lastDraw = .now
         let glyph = styler.cyan(symbols.spinnerFrames[frame % symbols.spinnerFrames.count])
         let elapsed = startedAt.map { styler.dim(" (\(formatElapsed(.now - $0)))") } ?? ""
-        let tail = captured.suffix(visibleLineCount).map { styler.dim("  " + $0) }
+        let tail = captured[capturedStart...].suffix(min(visibleLineCount, max(0, terminal.size(for: stream).rows - 2)))
+            .map { styler.dim("  " + $0) }
         region.render(["\(glyph) \(title)\(elapsed)"] + tail)
     }
 }

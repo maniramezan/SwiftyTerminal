@@ -3,7 +3,9 @@ import Foundation
 
 /// One of the process's standard streams.
 public enum TerminalStream: Sendable, Hashable {
+    /// The standard output stream (stdout).
     case standardOutput
+    /// The standard error stream (stderr).
     case standardError
 }
 
@@ -33,6 +35,12 @@ public struct TerminalEnvironment: Sendable, Equatable {
     public var isErrorTerminal: Bool
 
     /// Creates an environment from explicit values.
+    ///
+    /// - Parameters:
+    ///   - variables: Environment variables consulted for terminal type, color, and locale.
+    ///   - isInputTerminal: Whether stdin is attached to a terminal.
+    ///   - isOutputTerminal: Whether stdout is attached to a terminal.
+    ///   - isErrorTerminal: Whether stderr is attached to a terminal.
     public init(
         variables: [String: String] = [:],
         isInputTerminal: Bool = false,
@@ -56,6 +64,9 @@ public struct TerminalEnvironment: Sendable, Equatable {
     }
 
     /// Whether `stream` is attached to a terminal.
+    ///
+    /// - Parameters:
+    ///   - stream: The standard stream whose capabilities or output to use.
     public func isTerminal(_ stream: TerminalStream) -> Bool {
         switch stream {
         case .standardOutput: isOutputTerminal
@@ -73,6 +84,10 @@ public struct TerminalEnvironment: Sendable, Equatable {
     /// In ``ColorMode/auto``, a non-empty `NO_COLOR` disables color, then a non-empty
     /// `FORCE_COLOR` (other than `0` or `false`) enables it, then `TERM=dumb` disables it, and
     /// otherwise color follows whether the stream is a terminal.
+    ///
+    /// - Parameters:
+    ///   - stream: The standard stream whose capabilities or output to use.
+    ///   - mode: The requested color policy.
     public func isColorEnabled(for stream: TerminalStream, mode: ColorMode = .auto) -> Bool {
         switch mode {
         case .always:
@@ -94,13 +109,17 @@ public struct TerminalEnvironment: Sendable, Equatable {
     /// frames render instead of falling back to ASCII.
     public var supportsUnicode: Bool {
         guard !isDumb else { return false }
-        return [variables["LC_ALL"], variables["LC_CTYPE"], variables["LANG"]]
-            .compactMap { $0?.uppercased() }
-            .contains { $0.contains("UTF-8") || $0.contains("UTF8") }
+        let locale =
+            [variables["LC_ALL"], variables["LC_CTYPE"], variables["LANG"]]
+            .compactMap { $0?.uppercased() }.first { !$0.isEmpty } ?? ""
+        return locale.contains("UTF-8") || locale.contains("UTF8")
     }
 
     /// Whether `stream` can host redrawn content (spinners, arrow-key menus): it is a terminal
     /// that understands cursor movement.
+    ///
+    /// - Parameters:
+    ///   - stream: The standard stream whose capabilities or output to use.
     public func supportsCursorControl(on stream: TerminalStream) -> Bool {
         isTerminal(stream) && !isDumb
     }

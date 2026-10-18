@@ -12,6 +12,7 @@ public struct SelectionMenu: Sendable, Equatable {
     public enum Outcome: Sendable, Equatable {
         /// The chosen option indexes, sorted.
         case submitted([Int])
+        /// The user cancelled without submitting a selection.
         case cancelled
     }
 
@@ -31,6 +32,13 @@ public struct SelectionMenu: Sendable, Equatable {
     public private(set) var filter: String?
 
     /// Creates a menu. `defaults` preselects options and the first of them gets focus.
+    ///
+    /// - Parameters:
+    ///   - title: The title or step name displayed to the user.
+    ///   - options: The choices in their original display order.
+    ///   - allowsMultiple: Whether Space toggles several choices rather than selecting one option.
+    ///   - defaults: Options initially selected. Invalid values are ignored and duplicates are removed.
+    ///   - viewportHeight: The maximum visible option rows, excluding title, filter, and hints.
     public init(title: String, options: [String], allowsMultiple: Bool, defaults: [Int] = [], viewportHeight: Int = 8) {
         self.title = title
         self.options = options
@@ -48,6 +56,9 @@ public struct SelectionMenu: Sendable, Equatable {
     }
 
     /// Applies one key press; returns an outcome when the menu is finished.
+    ///
+    /// - Parameters:
+    ///   - key: The key press to apply to menu state.
     public mutating func handle(_ key: Key) -> Outcome? {
         if filter != nil, editFilter(with: key) {
             return nil
@@ -128,10 +139,19 @@ public struct SelectionMenu: Sendable, Equatable {
     }
 
     /// The lines of one frame, at most `maximumRows` tall.
+    ///
+    /// - Parameters:
+    ///   - styler: The styling policy applied to rendered text.
+    ///   - maximumRows: The maximum number of rendered rows, including title and hints. Zero hides the menu.
     public func render(styler: Styler, maximumRows: Int = .max) -> [String] {
+        guard maximumRows > 0 else { return [] }
         let visible = visibleIndexes
         let chromeRows = 2 + (filter == nil ? 0 : 1)
-        let rows = max(1, min(viewportHeight, visible.count, maximumRows - chromeRows))
+        if maximumRows <= chromeRows {
+            let option = visible.contains(focused) ? ["> " + options[focused]] : ["No matches"]
+            return Array((option + [title]).prefix(maximumRows))
+        }
+        let rows = max(1, min(max(1, viewportHeight), visible.count, maximumRows - chromeRows))
         let position = visible.firstIndex(of: focused) ?? 0
         let start = max(0, min(position - rows / 2, visible.count - rows))
 
@@ -168,6 +188,10 @@ public struct SelectionMenu: Sendable, Equatable {
     }
 
     /// The one-line answer left behind after the menu closes.
+    ///
+    /// - Parameters:
+    ///   - outcome: The submitted indexes or cancellation outcome to summarize.
+    ///   - styler: The styling policy applied to rendered text.
     public func summary(for outcome: Outcome, styler: Styler) -> String {
         switch outcome {
         case .submitted(let indexes):
@@ -181,6 +205,10 @@ public struct SelectionMenu: Sendable, Equatable {
 /// Parses typed selections such as `1,3`, `2-4` or `all` into sorted, unique, zero-based indexes.
 public enum SelectionParser {
     /// The indexes `text` names among `count` options, or nil when empty or out of range.
+    ///
+    /// - Parameters:
+    ///   - text: The numbered selection expression, such as `1,3`, `2-4`, or `all`.
+    ///   - count: The number of available options.
     public static func parse(_ text: String, count: Int) -> [Int]? {
         let trimmed = text.trimmingCharacters(in: .whitespaces).lowercased()
         if trimmed == "all" {

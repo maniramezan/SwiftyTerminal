@@ -11,10 +11,15 @@
 public actor StepList {
     /// Where a step is.
     public enum State: Sendable, Equatable {
+        /// The step has not started.
         case pending
+        /// The step is currently executing.
         case running
+        /// The step completed successfully.
         case succeeded
+        /// The step ended in failure.
         case failed
+        /// The step was intentionally skipped.
         case skipped
     }
 
@@ -40,6 +45,13 @@ public actor StepList {
     public nonisolated let isInteractive: Bool
 
     /// Creates a list of pending steps. Nothing is drawn until a step changes.
+    ///
+    /// - Parameters:
+    ///   - titles: Step names in their initial display order.
+    ///   - terminal: The terminal used for input, output, and capability decisions.
+    ///   - stream: The standard stream whose capabilities or output to use.
+    ///   - colorMode: Whether styling follows the environment, is forced on, or is disabled.
+    ///   - interval: The time between animation frames and, for live tails, between redraws.
     public init(
         _ titles: [String],
         terminal: any Terminal = StandardTerminal(),
@@ -58,11 +70,17 @@ public actor StepList {
     }
 
     /// The state of the step titled `title`.
+    ///
+    /// - Parameters:
+    ///   - title: The title or step name displayed to the user.
     public func state(of title: String) -> State? {
         steps.first { $0.title == title }?.state
     }
 
     /// Marks `title` as running, appending it when it was not listed.
+    ///
+    /// - Parameters:
+    ///   - title: The title or step name displayed to the user.
     public func start(_ title: String) {
         let index = indexOrAppend(title)
         steps[index].state = .running
@@ -71,21 +89,33 @@ public actor StepList {
             startAnimation()
             redraw()
         } else {
-            terminal.writeLine("\(styler.cyan("→")) \(title)", to: stream)
+            terminal.writeLine("\(styler.cyan(symbols == .unicode ? "→" : ">")) \(title)", to: stream)
         }
     }
 
     /// Marks `title` as succeeded.
+    ///
+    /// - Parameters:
+    ///   - title: The title or step name displayed to the user.
+    ///   - detail: Optional explanatory text displayed beside the completed step.
     public func succeed(_ title: String, detail: String? = nil) {
         end(title, state: .succeeded, detail: detail)
     }
 
     /// Marks `title` as failed.
+    ///
+    /// - Parameters:
+    ///   - title: The title or step name displayed to the user.
+    ///   - detail: Optional explanatory text displayed beside the completed step.
     public func fail(_ title: String, detail: String? = nil) {
         end(title, state: .failed, detail: detail)
     }
 
     /// Marks `title` as skipped.
+    ///
+    /// - Parameters:
+    ///   - title: The title or step name displayed to the user.
+    ///   - detail: Optional explanatory text displayed beside the completed step.
     public func skip(_ title: String, detail: String? = nil) {
         end(title, state: .skipped, detail: detail)
     }

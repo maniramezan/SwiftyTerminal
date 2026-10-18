@@ -31,7 +31,7 @@ let package = Package(
         ),
         .target(name: "SwiftyTerminalTesting", dependencies: ["SwiftyTerminal"]),
         // A tour of every component; also what `Scripts/test-pty.py` drives in a real PTY.
-        .executableTarget(name: "swifty-terminal-demo", dependencies: ["SwiftyTerminal"]),
+        .executableTarget(name: "swifty-terminal-demo", dependencies: ["SwiftyTerminal", "SwiftyTerminalLineEditor"]),
         .testTarget(
             name: "SwiftyTerminalTests",
             dependencies: ["SwiftyTerminal", "SwiftyTerminalLineEditor", "SwiftyTerminalTesting"]

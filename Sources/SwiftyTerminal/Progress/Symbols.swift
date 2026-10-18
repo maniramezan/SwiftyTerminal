@@ -1,14 +1,23 @@
 /// Status glyphs and spinner frames, in Unicode or an ASCII fallback for terminals whose locale
 /// is not UTF-8.
 public struct Symbols: Sendable, Equatable {
+    /// Glyph for a successful operation.
     public var success: String
+    /// Glyph for a failed operation.
     public var failure: String
+    /// Glyph for a warning.
     public var warning: String
+    /// Glyph for an informational message.
     public var info: String
+    /// Glyph for a skipped step.
     public var skipped: String
+    /// Glyph for a step that has not started.
     public var pending: String
+    /// Animation frames cycled by progress components.
     public var spinnerFrames: [String]
+    /// Glyph for the completed part of a progress bar.
     public var progressFilled: String
+    /// Glyph for the remaining part of a progress bar.
     public var progressEmpty: String
 
     /// Unicode glyphs and a Braille spinner.
@@ -38,12 +47,18 @@ public struct Symbols: Sendable, Equatable {
     )
 
     /// The set matching `environment`'s Unicode support.
+    ///
+    /// - Parameters:
+    ///   - environment: Terminal capabilities and environment variables to use for rendering decisions.
     public static func `for`(_ environment: TerminalEnvironment) -> Symbols {
         environment.supportsUnicode ? .unicode : .ascii
     }
 }
 
 /// Formats elapsed time compactly: `850ms`, `4.2s`, `3m 07s`.
+///
+/// - Parameters:
+///   - duration: Elapsed time to format.
 public func formatElapsed(_ duration: Duration) -> String {
     let milliseconds = duration.components.seconds * 1000 + duration.components.attoseconds / 1_000_000_000_000_000
     if milliseconds < 1000 {

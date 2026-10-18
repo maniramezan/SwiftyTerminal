@@ -18,6 +18,10 @@ Use `SwiftyTerminalTesting`'s `ScriptedTerminal` to test prompts and progress wi
 
 ## Topics
 
+### Getting started
+
+- <doc:UsingSwiftyTerminal>
+
 ### Terminal and environment
 
 - ``Terminal``

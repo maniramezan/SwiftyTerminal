@@ -10,20 +10,29 @@ public struct LiveRegion: Sendable {
     private var renderedLineCount = 0
 
     /// Creates an empty region on `stream`.
+    ///
+    /// - Parameters:
+    ///   - terminal: The terminal used for input, output, and capability decisions.
+    ///   - stream: The standard stream whose capabilities or output to use.
     public init(terminal: any Terminal, stream: TerminalStream) {
         self.terminal = terminal
         self.stream = stream
     }
 
     /// Replaces the previous frame with `lines`.
+    ///
+    /// - Parameters:
+    ///   - lines: The frame or permanent output lines; unsafe terminal controls are removed.
     public mutating func render(_ lines: [String]) {
-        let width = max(1, terminal.size.columns - 1)
+        let size = terminal.size(for: stream)
+        let width = max(0, size.columns - 1)
+        let visible = Array(lines.prefix(max(0, size.rows - 1)))
         var frame = rewind()
-        for line in lines {
+        for line in visible {
             frame += fitted(line, width: width) + "\n"
         }
         terminal.write(frame, to: stream)
-        renderedLineCount = lines.count
+        renderedLineCount = visible.count
     }
 
     /// Erases the current frame and leaves the cursor where it began.
@@ -37,10 +46,13 @@ public struct LiveRegion: Sendable {
 
     /// Erases the current frame and writes `lines` as permanent output below which the next
     /// frame starts.
+    ///
+    /// - Parameters:
+    ///   - lines: The frame or permanent output lines; unsafe terminal controls are removed.
     public mutating func commit(_ lines: [String]) {
         var frame = rewind()
         for line in lines {
-            frame += line + "\n"
+            frame += TextMetrics.sanitized(line) + "\n"
         }
         terminal.write(frame, to: stream)
         renderedLineCount = 0
@@ -48,14 +60,16 @@ public struct LiveRegion: Sendable {
 
     private func rewind() -> String {
         guard renderedLineCount > 0 else { return "" }
-        return "\u{1B}[\(renderedLineCount)A\r\u{1B}[J"
+        let rows = min(renderedLineCount, max(0, terminal.size(for: stream).rows - 1))
+        guard rows > 0 else { return "" }
+        return "\u{1B}[\(rows)A\r\u{1B}[J"
     }
 
-    // Styled lines keep their escapes when they fit; overlong lines and lines with stray
-    // control characters (which could move the cursor) are flattened.
+    // A resize can scroll previously rendered rows out of the visible screen.
     private func fitted(_ line: String, width: Int) -> String {
-        let hasControl = line.unicodeScalars.contains { $0.properties.generalCategory == .control && $0 != "\u{1B}" }
-        return !hasControl && TextMetrics.displayWidth(line) <= width
-            ? line : TextMetrics.truncate(line, toWidth: width)
+        let clean = TextMetrics.sanitized(line)
+        let ellipsis = terminal.environment.supportsUnicode ? "…" : "..."
+        return TextMetrics.displayWidth(clean) <= width
+            ? clean : TextMetrics.truncate(clean, toWidth: width, ellipsis: ellipsis)
     }
 }

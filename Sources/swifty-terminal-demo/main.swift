@@ -1,4 +1,5 @@
 import SwiftyTerminal
+import SwiftyTerminalLineEditor
 
 // Shows every component. `Scripts/test-pty.py` drives the `prompts` section through a real
 // pseudo-terminal, so keep its prompt text and `result:` lines in sync with that script.
@@ -78,6 +79,46 @@ let console = Console()
 }
 
 switch section {
+case "raw":
+    let terminal = StandardTerminal()
+    terminal.withRawInput {
+        terminal.writeLine("ready: raw")
+        _ = terminal.readKey()
+    }
+case "secret":
+    _ = prompter.askSecret("ready: secret")
+case "size":
+    let size = StandardTerminal().size(for: .standardError)
+    StandardTerminal().writeLine("size=\(size.columns),\(size.rows)", to: .standardError)
+case "layout":
+    let terminal = StandardTerminal()
+    terminal.withRawInput {
+        var region = LiveRegion(terminal: terminal, stream: .standardError)
+        region.render(["frame-one"] + Array(repeating: String(repeating: "x", count: 200), count: 30))
+        _ = terminal.readKey()
+        region.render(["frame-two"] + Array(repeating: String(repeating: "y", count: 200), count: 30))
+        _ = terminal.readKey()
+        region.commit(["layout-done"])
+    }
+case "line-editor":
+    let editor = LineEditor(historyPath: CommandLine.arguments.dropFirst(2).first)
+    editor.setCompletions(commands: ["tap_element", "status"])
+    editor.loadHistory()
+    for _ in 0..<2 {
+        console.print("edited: \(editor.readLine(prompt: "edit> ") ?? "EOF")")
+    }
+    editor.saveHistory()
+case "raw-throw":
+    struct Failure: Error {}
+    let terminal = StandardTerminal()
+    do {
+        try terminal.withRawInput {
+            try terminal.withRawInput { throw Failure() }
+        }
+    } catch {
+        console.print("raw restored after throw")
+    }
+
 case "prompts":
     runPrompts()
 case "progress":
