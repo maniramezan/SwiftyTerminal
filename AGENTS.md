@@ -29,7 +29,35 @@ make docc        # DocC with warnings as errors: document every public symbol an
 make lint        # swift-format lint --strict (run after the final edit)
 make linux-ci    # Docker, swift:6.2.4-noble — run after touching C or #if os code
 make check       # all of the above
+make format      # swift-format in place (fixes lint failures)
 ```
+
+Run `make lint` and `make test` after the final edit; run `make test-pty` and `make linux-ci` after
+changing anything in the C targets or platform-conditional code.
+
+Run a subset of tests:
+
+```bash
+swift test -Xswiftc -warnings-as-errors --filter SelectionMenuTests            # one suite
+swift test -Xswiftc -warnings-as-errors --filter PrompterTests/<testFunction>   # one test
+```
+
+## Architecture notes
+
+- **`Terminal` is the single seam.** Every component (`Prompter`, `Console`, `Spinner`, `StepList`, …)
+  takes a `Terminal`; `StandardTerminal` calls into `CSwiftyTerminal`, and `ScriptedTerminal`
+  (`SwiftyTerminalTesting`) replays keys/lines and records output. Unit tests exercise rendering and
+  key handling only through `ScriptedTerminal`, so new behavior should be reachable through that
+  protocol rather than through new global state.
+- **Why C exists:** raw-mode key reads, no-echo reads that restore termios on SIGINT, and stdio-ordered
+  writes cannot be done safely from Swift alone. `Scripts/test-pty.py` is the only thing that
+  exercises them (against `swifty-terminal-demo`), which is why `make coverage` gates Swift lines only.
+- **Coverage gate:** `make coverage` fails below 90% Swift line coverage (`MINIMUM_LINE_COVERAGE`);
+  new Swift code needs tests in `Tests/SwiftyTerminalTests`.
+- **Public API is documented under `--warnings-as-errors`:** `make docc` fails on any undocumented
+  public symbol or parameter. `docs/` is generated and git-ignored.
+- **Platforms:** macOS 15+ and Linux (Swift 6.2, language mode 6). `SwiftyTerminalLineEditor` links
+  libedit only on macOS and falls back to `getline` elsewhere, so `#if os` changes need `make linux-ci`.
 
 ## Rules
 

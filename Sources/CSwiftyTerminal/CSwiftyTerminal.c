@@ -48,16 +48,56 @@ static int st_read_byte(unsigned char *byte) {
     return read(STDIN_FILENO, byte, 1) == 1 ? 1 : 0;
 }
 
-int st_read_key(unsigned char *buffer, int capacity) {
-    struct termios original;
-    if (capacity < 1 || !isatty(STDIN_FILENO) || tcgetattr(STDIN_FILENO, &original) != 0) {
-        return -1;
+static struct termios st_raw_saved;
+static int st_raw_depth = 0;
+static struct sigaction st_raw_previous_term;
+static struct sigaction st_raw_previous_hup;
+
+static void st_raw_signalled(int signal_number) {
+    tcsetattr(STDIN_FILENO, TCSANOW, &st_raw_saved);
+    sigaction(SIGTERM, &st_raw_previous_term, NULL);
+    sigaction(SIGHUP, &st_raw_previous_hup, NULL);
+    raise(signal_number);
+}
+
+int st_raw_enter(void) {
+    if (st_raw_depth > 0) {
+        st_raw_depth++;
+        return 1;
     }
-    struct termios raw = original;
+    if (!isatty(STDIN_FILENO) || tcgetattr(STDIN_FILENO, &st_raw_saved) != 0) {
+        return 0;
+    }
+    struct termios raw = st_raw_saved;
     raw.c_lflag &= ~(ICANON | ECHO | ISIG);
     raw.c_cc[VMIN] = 1;
     raw.c_cc[VTIME] = 0;
+    struct sigaction action;
+    memset(&action, 0, sizeof(action));
+    action.sa_handler = st_raw_signalled;
+    sigemptyset(&action.sa_mask);
+    sigaction(SIGTERM, &action, &st_raw_previous_term);
+    sigaction(SIGHUP, &action, &st_raw_previous_hup);
     if (tcsetattr(STDIN_FILENO, TCSANOW, &raw) != 0) {
+        sigaction(SIGTERM, &st_raw_previous_term, NULL);
+        sigaction(SIGHUP, &st_raw_previous_hup, NULL);
+        return 0;
+    }
+    st_raw_depth = 1;
+    return 1;
+}
+
+void st_raw_exit(void) {
+    if (st_raw_depth == 0 || --st_raw_depth > 0) {
+        return;
+    }
+    tcsetattr(STDIN_FILENO, TCSANOW, &st_raw_saved);
+    sigaction(SIGTERM, &st_raw_previous_term, NULL);
+    sigaction(SIGHUP, &st_raw_previous_hup, NULL);
+}
+
+int st_read_key(unsigned char *buffer, int capacity) {
+    if (capacity < 1 || !st_raw_enter()) {
         return -1;
     }
 
@@ -89,7 +129,7 @@ int st_read_key(unsigned char *buffer, int capacity) {
         }
     }
 
-    tcsetattr(STDIN_FILENO, TCSANOW, &original);
+    st_raw_exit();
     return count;
 }
 

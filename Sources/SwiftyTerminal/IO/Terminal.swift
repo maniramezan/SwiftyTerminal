@@ -38,9 +38,17 @@ public protocol Terminal: Sendable {
     func readKey() -> Key?
     /// Reads one line without echoing it, or nil at end of input.
     func readSecret() -> String?
+    /// Runs `body` with stdin held in raw mode, so key presses that arrive while output is being
+    /// drawn are neither echoed nor turned into signals. Calls nest.
+    func withRawInput<T>(_ body: () throws -> T) rethrows -> T
 }
 
 extension Terminal {
+    /// Runs `body` unchanged; terminals without a raw mode need nothing more.
+    public func withRawInput<T>(_ body: () throws -> T) rethrows -> T {
+        try body()
+    }
+
     /// Writes `text` to stdout.
     public func write(_ text: String) {
         write(text, to: .standardOutput)
@@ -83,6 +91,14 @@ public struct StandardTerminal: Terminal {
         let count = Int(st_read_key(&buffer, Int32(buffer.count)))
         if count < 0 { return nil }
         return Key(bytes: Array(buffer.prefix(count)))
+    }
+
+    public func withRawInput<T>(_ body: () throws -> T) rethrows -> T {
+        let entered = st_raw_enter() != 0
+        defer {
+            if entered { st_raw_exit() }
+        }
+        return try body()
     }
 
     public func readSecret() -> String? {

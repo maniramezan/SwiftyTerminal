@@ -60,8 +60,7 @@ public struct Prompter: Prompting {
     public func confirm(_ prompt: String, default defaultAnswer: Bool) -> Bool? {
         let promptLine = "\(prompt) [\(defaultAnswer ? "Y/n" : "y/N")]: "
         while true {
-            terminal.write(promptLine)
-            guard let answer = readAnswer(singleKey: true) else { return nil }
+            guard let answer = readAnswer(after: promptLine, singleKey: true) else { return nil }
             let decision: Bool? =
                 switch answer.lowercased() {
                 case "": defaultAnswer
@@ -82,8 +81,7 @@ public struct Prompter: Prompting {
         let labels = keys.map { $0 == defaultKey ? String($0).uppercased() : String($0).lowercased() }
         let promptLine = "\(prompt) [\(labels.joined(separator: "/"))]: "
         while true {
-            terminal.write(promptLine)
-            guard let answer = readAnswer(singleKey: true) else { return nil }
+            guard let answer = readAnswer(after: promptLine, singleKey: true) else { return nil }
             let match =
                 answer.isEmpty
                 ? defaultKey : keys.first { String($0).lowercased() == answer.lowercased() }
@@ -104,8 +102,7 @@ public struct Prompter: Prompting {
         writeNumberedOptions(prompt, options: options)
         while true {
             let promptLine = "Choose 1-\(options.count) [\(defaultIndex + 1)]: "
-            terminal.write(promptLine)
-            guard let answer = readAnswer(singleKey: options.count <= 9) else { return nil }
+            guard let answer = readAnswer(after: promptLine, singleKey: options.count <= 9) else { return nil }
             let choice = answer.isEmpty ? defaultIndex : Int(answer).map { $0 - 1 }
             acknowledge(promptLine: promptLine, typed: answer, answer: choice.map { String($0 + 1) } ?? answer)
             if let choice, options.indices.contains(choice) {
@@ -157,6 +154,14 @@ public struct Prompter: Prompting {
             defaults: defaults,
             viewportHeight: menuHeight
         )
+        // Raw mode is held for the whole menu, so keys typed while a frame is drawn are not
+        // echoed or turned into signals.
+        return terminal.withRawInput {
+            menuLoop(&menu)
+        }
+    }
+
+    private func menuLoop(_ menu: inout SelectionMenu) -> [Int]? {
         var region = LiveRegion(terminal: terminal, stream: .standardOutput)
         while true {
             region.render(menu.render(styler: styler, maximumRows: terminal.size.rows - 1))
@@ -174,10 +179,21 @@ public struct Prompter: Prompting {
         }
     }
 
-    /// Reads one key on a terminal when `singleKey` is set, otherwise a line. Enter yields "",
-    /// cancellation keys nil, and keys that cannot be an answer a non-empty invalid marker.
-    private func readAnswer(singleKey: Bool) -> String? {
-        guard singleKey, terminal.environment.isInputTerminal, let key = terminal.readKey() else {
+    /// Writes `prompt`, then reads one key on a terminal when `singleKey` is set, otherwise a
+    /// line. Enter yields "", cancellation keys nil, and keys that cannot be an answer a
+    /// non-empty invalid marker. The prompt is written inside the raw-mode scope so a key
+    /// pressed right after it appears is not echoed.
+    private func readAnswer(after prompt: String, singleKey: Bool) -> String? {
+        let key: Key? =
+            singleKey && terminal.environment.isInputTerminal
+            ? terminal.withRawInput {
+                terminal.write(prompt)
+                return terminal.readKey()
+            } : nil
+        guard let key else {
+            if !(singleKey && terminal.environment.isInputTerminal) {
+                terminal.write(prompt)
+            }
             return terminal.readLine()?.trimmingCharacters(in: .whitespacesAndNewlines)
         }
         switch key {
