@@ -102,6 +102,11 @@ public struct Styler: Sendable, Equatable {
     }
 }
 
+/// `text` wrapped in `styles` for stdout, as decided by ``Styler/standardOutput``.
+public func styled(_ text: String, _ styles: ANSIStyle...) -> String {
+    Styler.standardOutput.apply(text, styles)
+}
+
 extension String {
     /// This string wrapped in `styles` using `styler`.
     public func styled(_ styles: ANSIStyle..., using styler: Styler = .standardOutput) -> String {

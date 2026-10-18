@@ -52,6 +52,7 @@ struct StylerTests {
         #expect(styler.apply("", .bold).isEmpty)
         #expect(Styler.plain.red("hi") == "hi")
         #expect("hi".styled(.green, using: styler) == "\u{1B}[32mhi\u{1B}[0m")
+        #expect(styled("hi", .bold) == Styler.standardOutput.apply("hi", .bold))
     }
 
     @Test("Hyperlinks use OSC 8 when styled and fall back to text with the URL")
