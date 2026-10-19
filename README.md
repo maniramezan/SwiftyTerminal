@@ -18,6 +18,29 @@ Shared by amoo and ShipIt.
 
 Requires Swift 6.2 and macOS 15 or Linux.
 
+## Try the demo
+
+Run the demo from a checkout with Swift 6.2 or later:
+
+```bash
+swift run swifty-terminal-demo
+```
+
+Choose a component from the menu to try it, then return to the menu to explore another.
+Each prompt and progress component has its own entry. Select Exit or cancel the menu to quit.
+Redirected input and `TERM=dumb` use a numbered menu.
+
+You can also run a section directly:
+
+```bash
+swift run swifty-terminal-demo output
+swift run swifty-terminal-demo progress
+swift run swifty-terminal-demo prompts
+swift run swifty-terminal-demo line-editor
+```
+
+Use `swift run swifty-terminal-demo all` for the sequential tour.
+
 ## Prompts
 
 ```swift
@@ -101,7 +124,7 @@ make docc
 ```
 
 `make check` runs lint, tests with the coverage gate, real-PTY tests, DocC, and Linux validation
-through Docker. `make demo` tours every component. `make docc` documents all three products and
+through Docker. `make demo` opens the component menu. `make docc` documents all three products and
 checks API summaries and parameters.
 
 CI runs lint, unit tests with a 90% Swift line-coverage gate on macOS, unit and real-PTY tests on

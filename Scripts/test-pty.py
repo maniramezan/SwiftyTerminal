@@ -122,6 +122,11 @@ class PTYPromptTests(unittest.TestCase):
                     process.send_signal(send)
                 elif send is not None:
                     os.write(master, send)
+            deadline = time.monotonic() + 10
+            while process.poll() is None:
+                self.assertLess(time.monotonic(), deadline, f"process did not exit: {pending!r}")
+                if select.select([master], [], [], 0.1)[0]:
+                    receive()
             self.assertEqual(process.wait(timeout=10), expected_exit)
             while select.select([master], [], [], 0)[0]:
                 receive()
@@ -137,6 +142,53 @@ class PTYPromptTests(unittest.TestCase):
                 process.wait()
             os.close(master)
             os.close(slave)
+
+    def test_demo_menu_returns_after_individual_components(self):
+        output = self.run_session([
+            (b"Enter select", b"\r"),
+            (b"Platform", None),
+            (b"Enter select", b"\r"),
+            (b"result: platform=0", None),
+            (b"Enter select", b"\x1b[B\x1b[B"),
+            (b"> (*) Confirmation", b"\r"),
+            (b"Continue? [Y/n]: ", b"n"),
+            (b"result: continue=false", None),
+            (b"Enter select", b"\x1b"),
+        ], section="menu")
+        self.assertNotIn(b"Password:", output)
+        self.assertNotIn(b"Tests failed", output)
+
+    def test_spinner_waits_for_key_then_returns_to_menu(self):
+        def dismiss_spinner(master, slave, process):
+            time.sleep(1.2)
+            self.assertIsNone(process.poll())
+            os.write(master, b"x")
+
+        output = self.run_session([
+            (b"Enter select", b"/Spinner"),
+            (b"> (*) Spinner", b"\r"),
+            (b"Press any key to dismiss the spinner.", None),
+            (b"Inspecting project", dismiss_spinner),
+            (b"Enter select", b"\x1b"),
+        ], section="menu")
+        self.assertGreater(output.count(b"Inspecting project"), 2)
+
+    def test_line_editor_exit_returns_to_menu(self):
+        self.run_session([
+            (b"Enter select", b"/Line editor"),
+            (b"> (*) Line editor", b"\r"),
+            (b"Type exit and press Enter to leave the line editor.", None),
+            (b"edit> ", b"status\r"),
+            (b"edited: status", None),
+            (b"edit> ", b"exit\r"),
+            (b"Enter select", b"\x1b"),
+        ], section="menu")
+
+    def test_demo_menu_exit_option(self):
+        self.run_session([
+            (b"Enter select", b"/Exit"),
+            (b"> (*) Exit", b"\r"),
+        ], section="menu")
 
     def test_full_conversation(self):
         self.run_session([
@@ -222,6 +274,7 @@ class PTYPromptTests(unittest.TestCase):
             else:
                 first = [(b"edit> ", b"tap_element\r"), (b"edited: tap_element", None),
                          (b"edit> ", b"status\r"), (b"edited: status", None)]
+            first.append((b"edit> ", b"\x04"))
             self.run_session(first, section="line-editor", arguments=(history,))
             if sys.platform == "darwin":
                 self.assertTrue(os.path.isfile(history))

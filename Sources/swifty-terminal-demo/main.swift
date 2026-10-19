@@ -1,40 +1,83 @@
+import Dispatch
 import SwiftyTerminal
 import SwiftyTerminalLineEditor
 
-let section = CommandLine.arguments.dropFirst().first ?? "all"
+let section = CommandLine.arguments.dropFirst().first ?? "menu"
 let prompter = Prompter()
 let console = Console()
 
-@MainActor func runPrompts() {
+@MainActor func runSingleSelection() {
     let platform = prompter.choose("Platform", options: ["iOS", "Android", "Both"], default: 0)
     console.print("result: platform=\(platform.map(String.init) ?? "cancelled")")
+}
+
+@MainActor func runConfirmation() {
     let proceed = prompter.confirm("Continue?", default: true)
     console.print("result: continue=\(proceed.map(String.init) ?? "cancelled")")
+}
+
+@MainActor func runMultipleSelection() {
     let devices = prompter.chooseMany(
         "Devices",
         options: ["iPhone 17", "iPhone 17 Pro", "iPad Air", "Pixel 9", "Pixel Tablet"],
         defaults: [0]
     )
     console.print("result: devices=\(devices.map { $0.map(String.init).joined(separator: ",") } ?? "cancelled")")
+}
+
+@MainActor func runKeyChoice() {
     let action = prompter.askKey("Tests failed", keys: ["r", "s", "a"], default: "r")
     console.print("result: action=\(action.map(String.init) ?? "cancelled")")
+}
+
+@MainActor func runTextInput() {
     let scheme = prompter.ask("Scheme", default: "MyApp")
     console.print("result: scheme=\(scheme ?? "cancelled")")
+}
+
+@MainActor func runSecretInput() {
     let secret = prompter.askSecret("Password")
     console.print("result: secret-length=\(secret.map { String($0.count) } ?? "cancelled")")
 }
 
-@MainActor func runProgress() async {
-    _ = await withSpinner("Inspecting project", showsResult: true) {
-        try? await Task.sleep(for: .seconds(1))
+@MainActor func runPrompts() {
+    runSingleSelection()
+    runConfirmation()
+    runMultipleSelection()
+    runKeyChoice()
+    runTextInput()
+    runSecretInput()
+}
+
+@MainActor func runSpinner() async {
+    let terminal = StandardTerminal()
+    guard terminal.environment.isInputTerminal else {
+        terminal.writeLine("Spinner demo requires a terminal; skipping.", to: .standardError)
+        return
     }
+    await withSpinner("Inspecting project", terminal: terminal, showsResult: true) {
+        await withCheckedContinuation { continuation in
+            DispatchQueue.global().async {
+                terminal.withRawInput {
+                    terminal.writeLine("Press any key to dismiss the spinner.", to: .standardError)
+                    _ = terminal.readKey()
+                }
+                continuation.resume()
+            }
+        }
+    }
+}
+
+@MainActor func runProgressBar() async {
     let bar = ProgressBar("Uploading")
     for step in 0...20 {
         await bar.update(completed: Double(step), total: 20)
         try? await Task.sleep(for: .milliseconds(60))
     }
     await bar.succeed("Uploaded build")
+}
 
+@MainActor func runSteps() async {
     let steps = StepList(["Build", "Test", "Upload"])
     for title in ["Build", "Test"] {
         await steps.start(title)
@@ -43,7 +86,9 @@ let console = Console()
     }
     await steps.skip("Upload", detail: "dry run")
     await steps.finish()
+}
 
+@MainActor func runLiveTail() async {
     let tail = LiveTail("Compiling", visibleLineCount: 3)
     await tail.start()
     for file in ["AppDelegate", "ContentView", "Model", "Store", "Settings", "Networking"] {
@@ -51,6 +96,13 @@ let console = Console()
         try? await Task.sleep(for: .milliseconds(250))
     }
     await tail.succeed()
+}
+
+@MainActor func runProgress() async {
+    await runSpinner()
+    await runProgressBar()
+    await runSteps()
+    await runLiveTail()
 }
 
 @MainActor func runOutput() {
@@ -73,6 +125,49 @@ let console = Console()
         lines: ["App Store Connect rejected the API key."],
         nextSteps: ["Check ASC_KEY_ID", "Run shipit doctor"]
     )
+}
+
+@MainActor func runLineEditor(historyPath: String? = nil) {
+    let editor = LineEditor(historyPath: historyPath)
+    editor.setCompletions(commands: ["tap_element", "status", "exit"])
+    editor.loadHistory()
+    console.print("Try typing tap_element or status. Type exit and press Enter to leave the line editor.")
+    console.print("On macOS, use Tab for completion and Up/Down for history. Ctrl-D on an empty line also exits.")
+    while true {
+        guard let line = editor.readLine(prompt: "edit> ") else {
+            console.print("edited: EOF")
+            break
+        }
+        if line == "exit" { break }
+        console.print("edited: \(line)")
+    }
+    editor.saveHistory()
+}
+
+@MainActor func runMenu() async {
+    let demos: [(title: String, run: @MainActor () async -> Void)] = [
+        ("Single selection", { runSingleSelection() }),
+        ("Multiple selection", { runMultipleSelection() }),
+        ("Confirmation", { runConfirmation() }),
+        ("Key choice", { runKeyChoice() }),
+        ("Text input", { runTextInput() }),
+        ("Hidden password input", { runSecretInput() }),
+        ("Spinner", { await runSpinner() }),
+        ("Progress bar", { await runProgressBar() }),
+        ("Step list", { await runSteps() }),
+        ("Live output", { await runLiveTail() }),
+        ("Tables, alerts and styled output", { runOutput() }),
+        ("Line editor", { runLineEditor() }),
+    ]
+    console.header("SwiftyTerminal demo")
+    var selection = 0
+    while let choice = prompter.choose("Try a component", options: demos.map(\.title) + ["Exit"], default: selection) {
+        guard choice < demos.count else { return }
+        selection = choice
+        console.print()
+        await demos[choice].run()
+        console.print()
+    }
 }
 
 switch section {
@@ -98,13 +193,7 @@ case "layout":
         region.commit(["layout-done"])
     }
 case "line-editor":
-    let editor = LineEditor(historyPath: CommandLine.arguments.dropFirst(2).first)
-    editor.setCompletions(commands: ["tap_element", "status"])
-    editor.loadHistory()
-    for _ in 0..<2 {
-        console.print("edited: \(editor.readLine(prompt: "edit> ") ?? "EOF")")
-    }
-    editor.saveHistory()
+    runLineEditor(historyPath: CommandLine.arguments.dropFirst(2).first)
 case "raw-throw":
     struct Failure: Error {}
     let terminal = StandardTerminal()
@@ -122,8 +211,10 @@ case "progress":
     await runProgress()
 case "output":
     runOutput()
-default:
+case "all":
     runOutput()
     await runProgress()
     runPrompts()
+default:
+    await runMenu()
 }
