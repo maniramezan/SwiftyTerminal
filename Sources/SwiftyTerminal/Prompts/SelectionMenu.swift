@@ -3,7 +3,7 @@ import Foundation
 /// The state of an arrow-key selection menu, separate from terminal I/O so key handling and
 /// rendering are testable as plain values.
 ///
-/// Keys: Up/Down (or `k`/`j`) move, PageUp/PageDown jump a screen, Home/End go to the ends,
+/// Keys: Up/Down (or `k`/`j`) move, Left/Right (or PageUp/PageDown) jump a screen, Home/End go to the ends,
 /// `1`–`9` jump to an option, `/` starts filtering (type to narrow, Backspace edits, Esc clears),
 /// Space toggles and `a` toggles all in a multiple-choice menu, Enter submits, and Esc, Ctrl-C
 /// or Ctrl-D cancel.
@@ -68,9 +68,9 @@ public struct SelectionMenu: Sendable, Equatable {
             moveFocus(by: -1, wrapping: true)
         case .down, .character("j"):
             moveFocus(by: 1, wrapping: true)
-        case .pageUp:
+        case .left, .pageUp:
             moveFocus(by: -viewportHeight, wrapping: false)
-        case .pageDown:
+        case .right, .pageDown:
             moveFocus(by: viewportHeight, wrapping: false)
         case .home:
             focused = visibleIndexes.first ?? focused
@@ -175,6 +175,9 @@ public struct SelectionMenu: Sendable, Equatable {
 
     private func hint(showing rows: Int, of count: Int) -> String {
         var parts = ["Up/Down move"]
+        if count > rows {
+            parts.append("Left/Right page")
+        }
         if allowsMultiple {
             parts += ["Space toggle", "a all"]
         }

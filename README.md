@@ -57,7 +57,8 @@ let devices = prompter.chooseMany("Devices", options: deviceNames, defaults: [0]
 `ask` reads free text, `askSecret` hides input, and `confirm` accepts a single `y` or `n` key.
 
 On a terminal, `choose` and `chooseMany` are arrow-key menus (radio buttons and checkboxes) with
-`/` to filter long lists, and they collapse to a one-line answer when done. When input is redirected
+Up/Down to move, Left/Right (or PageUp/PageDown) to jump a page, and `/` to filter long lists.
+They collapse to a one-line answer when done. When input is redirected
 or `TERM=dumb`, they fall back to numbered lists (`1,3`, `2-4`, `all`), so `printf '2\ny\n' | tool`
 works. Every question returns `nil` when the user cancels (Esc, Ctrl-C in a menu, Ctrl-D).
 

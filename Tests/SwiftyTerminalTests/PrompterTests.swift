@@ -124,6 +124,23 @@ struct PrompterTests {
 
 @Suite("Prompter menus")
 struct PrompterMenuTests {
+    @Test("Page jumps use the visible height, including filter rows", arguments: [false, true], [7, 24])
+    func pageNavigation(filtering: Bool, terminalRows: Int) {
+        let filterKeys: [ScriptedTerminal.Input] = filtering ? [.key(.character("/")), .key(.character("D"))] : []
+        let terminal = ScriptedTerminal(
+            input: filterKeys + [
+                .key(.right), .key(.character(" ")), .key(.right), .key(.left), .key(.character(" ")), .key(.enter),
+            ],
+            size: TerminalSize(columns: 120, rows: terminalRows)
+        )
+        let options = (0..<20).map { "Device \($0)" }
+        let pageHeight = min(8, terminalRows - (filtering ? 4 : 3))
+        #expect(Prompter(terminal: terminal).chooseMany("Devices", options: options, defaults: [0]) == [0])
+        #expect(terminal.plainOutput().contains("> [x] Device \(pageHeight)"))
+        #expect(terminal.remainingInput.isEmpty)
+        #expect(terminal.unexpectedReads.isEmpty)
+    }
+
     @Test("Multiple selection toggles with Space and returns sorted indexes")
     func multipleSelection() {
         let terminal = ScriptedTerminal(

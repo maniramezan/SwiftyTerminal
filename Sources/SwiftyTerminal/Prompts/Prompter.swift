@@ -219,7 +219,10 @@ public struct Prompter: Prompting {
     private func menuLoop(_ menu: inout SelectionMenu) -> [Int]? {
         var region = LiveRegion(terminal: terminal, stream: .standardOutput)
         while true {
-            region.render(menu.render(styler: styler, maximumRows: terminal.size.rows - 1))
+            let maximumRows = terminal.size.rows - 1
+            let chromeRows = menu.filter == nil ? 2 : 3
+            menu.viewportHeight = max(1, min(menuHeight, maximumRows - chromeRows))
+            region.render(menu.render(styler: styler, maximumRows: maximumRows))
             guard let key = terminal.readKey() else {
                 region.clear()
                 return nil

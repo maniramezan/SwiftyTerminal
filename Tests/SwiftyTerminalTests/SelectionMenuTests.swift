@@ -91,9 +91,71 @@ struct SelectionMenuTests {
         #expect(
             lines == [
                 "Device", "  ( ) Pixel 9", "> (*) Pixel Tablet",
-                "Up/Down move | / filter | Enter select | Esc cancel (5/5)",
+                "Up/Down move | Left/Right page | / filter | Enter select | Esc cancel (5/5)",
             ]
         )
+    }
+
+    @Test("Left/Right and PageUp/PageDown jump a viewport and stop at the ends", arguments: [false, true])
+    func pageNavigation(allowsMultiple: Bool) {
+        var menu = SelectionMenu(
+            title: "Device",
+            options: devices,
+            allowsMultiple: allowsMultiple,
+            defaults: [1],
+            viewportHeight: 2
+        )
+        _ = menu.handle(.right)
+        #expect(menu.focused == 3)
+        _ = menu.handle(.right)
+        #expect(menu.focused == 4)
+        _ = menu.handle(.right)
+        #expect(menu.focused == 4)
+        _ = menu.handle(.left)
+        #expect(menu.focused == 2)
+        _ = menu.handle(.pageUp)
+        #expect(menu.focused == 0)
+        _ = menu.handle(.left)
+        #expect(menu.focused == 0)
+        _ = menu.handle(.pageDown)
+        #expect(menu.focused == 2)
+        #expect(menu.selected == (allowsMultiple ? [1] : []))
+        #expect(menu.render(styler: .plain).last?.contains("Left/Right page") == true)
+    }
+
+    @Test("Paging follows filtered choices and preserves selections")
+    func filteredPageNavigation() {
+        var menu = SelectionMenu(
+            title: "Device",
+            options: devices,
+            allowsMultiple: true,
+            defaults: [0],
+            viewportHeight: 1
+        )
+        _ = menu.handle(.character("/"))
+        for character in "iP" {
+            _ = menu.handle(.character(character))
+        }
+        #expect(menu.visibleIndexes == [0, 1, 2])
+        _ = menu.handle(.right)
+        #expect(menu.focused == 1)
+        _ = menu.handle(.right)
+        #expect(menu.focused == 2)
+        _ = menu.handle(.character(" "))
+        _ = menu.handle(.left)
+        #expect(menu.focused == 1)
+        #expect(menu.handle(.enter) == .submitted([0, 2]))
+        _ = menu.handle(.character("z"))
+        _ = menu.handle(.right)
+        _ = menu.handle(.left)
+        #expect(menu.visibleIndexes.isEmpty)
+        #expect(menu.handle(.enter) == nil)
+    }
+
+    @Test("Menus that fit the viewport omit the paging hint")
+    func noPagingHint() {
+        let menu = SelectionMenu(title: "Device", options: devices, allowsMultiple: true)
+        #expect(menu.render(styler: .plain).last?.contains("Left/Right page") == false)
     }
 
     @Test("Rendering respects the terminal height")
