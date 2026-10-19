@@ -29,7 +29,9 @@ public struct Prompter: Prompting {
     ) {
         self.terminal = terminal
         self.styler = Styler(
-            isEnabled: terminal.environment.isColorEnabled(for: .standardOutput, mode: colorMode),
+            stream: .standardOutput,
+            mode: colorMode,
+            environment: terminal.environment,
             theme: theme
         )
         self.usesInteractiveMenus = terminal.environment.supportsInteractiveSelection
@@ -44,7 +46,7 @@ public struct Prompter: Prompting {
     /// - Parameters:
     ///   - text: The text to display.
     public func say(_ text: String) {
-        terminal.writeLine(styler.apply(text, .bold, styler.theme.accent))
+        terminal.writeLine(styler.apply(text, color: styler.theme.accent, styles: [.bold]))
     }
 
     /// Asks for free text. Enter keeps `defaultValue`; `validate` returns an error message to
@@ -197,7 +199,7 @@ public struct Prompter: Prompting {
     }
 
     private func writeNumberedOptions(_ prompt: String, options: [String]) {
-        terminal.writeLine(styler.apply("\(prompt):", .bold, styler.theme.accent))
+        terminal.writeLine(styler.apply("\(prompt):", color: styler.theme.accent, styles: [.bold]))
         for (offset, option) in options.enumerated() {
             terminal.writeLine("  " + styler.accent("\(offset + 1))") + " \(option)")
         }

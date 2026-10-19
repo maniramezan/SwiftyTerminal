@@ -61,7 +61,7 @@ public actor LiveTail {
         self.title = title
         self.terminal = terminal
         self.stream = stream
-        self.styler = Styler(isEnabled: terminal.environment.isColorEnabled(for: stream, mode: colorMode), theme: theme)
+        self.styler = Styler(stream: stream, mode: colorMode, environment: terminal.environment, theme: theme)
         self.symbols = .for(terminal.environment)
         self.visibleLineCount = max(1, visibleLineCount)
         self.retainedLineCount = max(1, visibleLineCount, retainedLineCount)

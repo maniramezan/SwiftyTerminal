@@ -27,7 +27,7 @@ public struct Console: Sendable {
     ) {
         self.terminal = terminal
         self.stream = stream
-        self.styler = Styler(isEnabled: terminal.environment.isColorEnabled(for: stream, mode: colorMode), theme: theme)
+        self.styler = Styler(stream: stream, mode: colorMode, environment: terminal.environment, theme: theme)
         self.symbols = .for(terminal.environment)
     }
 
@@ -44,7 +44,7 @@ public struct Console: Sendable {
     /// - Parameters:
     ///   - title: The title or step name displayed to the user.
     public func header(_ title: String) {
-        print("\n" + styler.apply("=== \(title) ===", .bold, styler.theme.accent))
+        print("\n" + styler.apply("=== \(title) ===", color: styler.theme.accent, styles: [.bold]))
     }
 
     /// A dim horizontal rule.

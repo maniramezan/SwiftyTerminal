@@ -64,7 +64,7 @@ public actor StepList {
         self.steps = titles.map { Step(title: $0) }
         self.terminal = terminal
         self.stream = stream
-        self.styler = Styler(isEnabled: terminal.environment.isColorEnabled(for: stream, mode: colorMode), theme: theme)
+        self.styler = Styler(stream: stream, mode: colorMode, environment: terminal.environment, theme: theme)
         self.symbols = .for(terminal.environment)
         self.interval = interval
         self.region = LiveRegion(terminal: terminal, stream: stream)

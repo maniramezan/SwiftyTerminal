@@ -64,16 +64,23 @@ public struct Styler: Sendable, Equatable {
     /// Whether styles are emitted.
     public let isEnabled: Bool
 
+    /// The RGB precision used when styling is enabled.
+    public let colorDepth: ColorDepth
+
     /// The semantic palette used by components and theme-aware styling methods.
     public var theme: TerminalTheme
 
-    /// Creates a styler with an explicit decision.
+    /// Creates a styler with explicit capability decisions.
+    ///
+    /// Defaults to direct RGB; use the stream initializer to detect terminal capabilities.
     ///
     /// - Parameters:
     ///   - isEnabled: Whether the styler emits ANSI sequences.
     ///   - theme: The semantic palette to use when styling components.
-    public init(isEnabled: Bool, theme: TerminalTheme = .default) {
+    ///   - colorDepth: The RGB precision supported by the output destination.
+    public init(isEnabled: Bool, theme: TerminalTheme = .default, colorDepth: ColorDepth = .trueColor) {
         self.isEnabled = isEnabled
+        self.colorDepth = colorDepth
         self.theme = theme
     }
 
@@ -91,6 +98,7 @@ public struct Styler: Sendable, Equatable {
         theme: TerminalTheme = .default
     ) {
         self.isEnabled = environment.isColorEnabled(for: stream, mode: mode)
+        self.colorDepth = environment.colorDepth
         self.theme = theme
     }
 
@@ -122,35 +130,49 @@ public struct Styler: Sendable, Equatable {
         return styles.map(\.escapeSequence).joined() + text + ANSIStyle.reset
     }
 
+    /// Wraps `text` in a foreground color and optional text attributes.
+    ///
+    /// RGB colors are approximated according to ``colorDepth``. Disabled styling and empty
+    /// text return `text` unchanged. Named colors retain their terminal palette entries.
+    ///
+    /// - Parameters:
+    ///   - text: The text to style.
+    ///   - color: The foreground color to apply.
+    ///   - styles: Additional SGR attributes applied before the foreground color.
+    public func apply(_ text: String, color: TerminalColor, styles: [ANSIStyle] = []) -> String {
+        guard isEnabled, !text.isEmpty else { return text }
+        return styles.map(\.escapeSequence).joined() + color.escapeSequence(for: colorDepth) + text + ANSIStyle.reset
+    }
+
     /// Text in the theme’s accent color.
     ///
     /// - Parameters:
     ///   - text: The text to style.
-    public func accent(_ text: String) -> String { apply(text, theme.accent) }
+    public func accent(_ text: String) -> String { apply(text, color: theme.accent) }
 
     /// Text in the theme’s success color.
     ///
     /// - Parameters:
     ///   - text: The text to style.
-    public func success(_ text: String) -> String { apply(text, theme.success) }
+    public func success(_ text: String) -> String { apply(text, color: theme.success) }
 
     /// Text in the theme’s error color.
     ///
     /// - Parameters:
     ///   - text: The text to style.
-    public func error(_ text: String) -> String { apply(text, theme.error) }
+    public func error(_ text: String) -> String { apply(text, color: theme.error) }
 
     /// Text in the theme’s warning color.
     ///
     /// - Parameters:
     ///   - text: The text to style.
-    public func warning(_ text: String) -> String { apply(text, theme.warning) }
+    public func warning(_ text: String) -> String { apply(text, color: theme.warning) }
 
     /// Text in the theme’s informational color.
     ///
     /// - Parameters:
     ///   - text: The text to style.
-    public func info(_ text: String) -> String { apply(text, theme.info) }
+    public func info(_ text: String) -> String { apply(text, color: theme.info) }
 
     /// Bold text.
     ///

@@ -1,4 +1,5 @@
 import Dispatch
+import Foundation
 import SwiftyTerminal
 import SwiftyTerminalLineEditor
 
@@ -145,17 +146,42 @@ var console = Console(theme: theme)
     editor.saveHistory()
 }
 
+private func parseRGB(_ text: String) -> TerminalColor? {
+    let parts = text.split(separator: ",", omittingEmptySubsequences: false)
+    guard parts.count == 3 else { return nil }
+    let channels = parts.compactMap { UInt8($0.trimmingCharacters(in: .whitespaces)) }
+    guard channels.count == 3 else { return nil }
+    return .rgb(channels[0], channels[1], channels[2])
+}
+
 @MainActor func runThemePicker() {
-    let colors: [(name: String, style: ANSIStyle)] = [
+    let colors: [(name: String, color: TerminalColor)] = [
         ("Cyan", .cyan), ("Blue", .blue), ("Magenta", .magenta), ("Green", .green),
         ("Yellow", .yellow), ("Red", .red), ("White", .white),
     ]
-    let current = colors.firstIndex { $0.style == theme.accent } ?? 0
-    guard let choice = prompter.choose("Accent color", options: colors.map(\.name), default: current) else { return }
-    theme.accent = colors[choice].style
+    let current = colors.firstIndex { $0.color == theme.accent } ?? colors.count
+    guard let choice = prompter.choose("Accent color", options: colors.map(\.name) + ["Custom RGB"], default: current)
+    else {
+        return
+    }
+    let name: String
+    if choice == colors.count {
+        guard
+            let answer = prompter.ask(
+                "RGB color (red,green,blue)",
+                default: "120,80,255",
+                validate: { parseRGB($0) == nil ? "Enter three numbers from 0 to 255, separated by commas." : nil }
+            ), let color = parseRGB(answer)
+        else { return }
+        theme.accent = color
+        name = "RGB (\(answer))"
+    } else {
+        theme.accent = colors[choice].color
+        name = colors[choice].name
+    }
     prompter = Prompter(theme: theme)
     console = Console(theme: theme)
-    console.header("Accent: \(colors[choice].name)")
+    console.header("Accent: \(name)")
 }
 
 @MainActor func runMenu() async {

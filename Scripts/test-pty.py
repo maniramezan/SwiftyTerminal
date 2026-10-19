@@ -84,14 +84,14 @@ class Screen:
 
 class PTYPromptTests(unittest.TestCase):
     def run_session(self, steps, section="prompts", expected_exit=0, columns=80, rows=24,
-                    redirected_stdout=False, screen=None, arguments=(), color=False):
+                    redirected_stdout=False, screen=None, arguments=(), color=False, variables=None):
         master, slave = pty.openpty()
         original = termios.tcgetattr(slave)
         fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", rows, columns, 0, 0))
         process = subprocess.Popen(
             [DEMO, section, *arguments],
             stdin=slave, stdout=subprocess.DEVNULL if redirected_stdout else slave, stderr=slave,
-            env={**os.environ, "NO_COLOR": "" if color else "1", "TERM": "xterm-256color", "LANG": "en_US.UTF-8"},
+            env={**os.environ, "NO_COLOR": "" if color else "1", "TERM": "xterm-256color", "LANG": "en_US.UTF-8", **(variables or {})},
         )
         pending = b""
         transcript = bytearray()
@@ -206,6 +206,34 @@ class PTYPromptTests(unittest.TestCase):
             (b"Enter select", b"\x1b"),
         ], section="menu", color=True)
         self.assertIn(b"\x1b[35miOS\x1b[0m", output)
+
+    def test_rgb_picker_validates_channels_and_uses_the_advertised_color_depth(self):
+        cases = [
+            ({"COLORTERM": "truecolor"}, b"\x1b[38;2;120;80;255m"),
+            ({"COLORTERM": "", "TERM": "xterm-256color"}, b"\x1b[38;5;99m"),
+            ({"COLORTERM": "", "TERM": "xterm"}, b"\x1b[90m"),
+        ]
+        for variables, sequence in cases:
+            with self.subTest(variables=variables):
+                self.run_session([
+                    (b"Enter select", b"/Color theme"),
+                    (b"> (*) Color theme", b"\r"),
+                    (b"Accent color", None),
+                    (b"Enter select", b"/Custom RGB"),
+                    (b"> (*) Custom RGB", b"\r"),
+                    (b"RGB color (red,green,blue) [120,80,255]: ", b"256,80,255\r"),
+                    (b"Enter three numbers from 0 to 255, separated by commas.", None),
+                    (b"RGB color (red,green,blue) [120,80,255]: ", b"1,invalid,2,3\r"),
+                    (b"Enter three numbers from 0 to 255, separated by commas.", None),
+                    (b"RGB color (red,green,blue) [120,80,255]: ", b"120,80,255\r"),
+                    (sequence + b"=== Accent: RGB (120,80,255) ===\x1b[0m", None),
+                    (b"Enter select", b"/Single selection"),
+                    (b"> (*) Single selection", b"\r"),
+                    (sequence + b"> (*) iOS\x1b[0m", None),
+                    (b"Enter select", b"\r"),
+                    (b"result: platform=0", None),
+                    (b"Enter select", b"\x1b"),
+                ], section="menu", color=True, variables=variables)
 
     def test_full_conversation(self):
         self.run_session([

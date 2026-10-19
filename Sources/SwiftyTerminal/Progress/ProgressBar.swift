@@ -40,7 +40,7 @@ public actor ProgressBar {
         self.message = message
         self.terminal = terminal
         self.stream = stream
-        self.styler = Styler(isEnabled: terminal.environment.isColorEnabled(for: stream, mode: colorMode), theme: theme)
+        self.styler = Styler(stream: stream, mode: colorMode, environment: terminal.environment, theme: theme)
         self.symbols = .for(terminal.environment)
         self.width = max(5, width)
         self.minimumRedrawInterval = minimumRedrawInterval

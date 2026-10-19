@@ -53,7 +53,7 @@ public struct Alert: Sendable, Equatable {
     ///   - maximumWidth: The maximum terminal width, including borders. Narrow widths use a compact layout.
     public func render(styler: Styler, symbols: Symbols, maximumWidth: Int = 80) -> [String] {
         let unicode = symbols == .unicode
-        let (glyph, color): (String, ANSIStyle) =
+        let (glyph, color): (String, TerminalColor) =
             switch kind {
             case .success: (symbols.success, styler.theme.success)
             case .info: (symbols.info, styler.theme.info)
@@ -77,12 +77,12 @@ public struct Alert: Sendable, Equatable {
         )
         let (topLeft, topRight, bottomLeft, bottomRight, horizontal, vertical) =
             unicode ? ("╭", "╮", "╰", "╯", "─", "│") : ("+", "+", "+", "+", "-", "|")
-        let border = { (text: String) in styler.apply(text, color) }
+        let border = { (text: String) in styler.apply(text, color: color) }
 
         let fittedHeading = TextMetrics.truncate(heading, toWidth: contentWidth - 1, ellipsis: ellipsis)
         let headingFill = contentWidth - TextMetrics.displayWidth(fittedHeading) - 1
         var rendered = [
-            border(topLeft + horizontal + " ") + styler.apply(fittedHeading, .bold, color) + " "
+            border(topLeft + horizontal + " ") + styler.apply(fittedHeading, color: color, styles: [.bold]) + " "
                 + border(String(repeating: horizontal, count: max(0, headingFill)) + topRight)
         ]
         for line in body {

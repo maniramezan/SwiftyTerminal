@@ -34,7 +34,12 @@ struct ThemeTests {
         #expect(styler.cyan("a") == "\u{1B}[36ma\u{1B}[0m")
         #expect(styler.red("e") == "\u{1B}[31me\u{1B}[0m")
         #expect(Styler(isEnabled: false, theme: theme).accent("a") == "a")
-        let resolved = Styler(stream: .standardOutput, mode: .always, environment: .init(), theme: theme)
+        let resolved = Styler(
+            stream: .standardOutput,
+            mode: .always,
+            environment: .init(variables: ["COLORTERM": "truecolor"]),
+            theme: theme
+        )
         #expect(resolved == styler)
     }
 

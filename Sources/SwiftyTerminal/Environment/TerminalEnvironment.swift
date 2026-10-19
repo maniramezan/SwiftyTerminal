@@ -105,6 +105,21 @@ public struct TerminalEnvironment: Sendable, Equatable {
         }
     }
 
+    /// The color depth advertised by environment variables, independent of color enablement.
+    ///
+    /// `COLORTERM=truecolor` or `24bit`, or a `TERM` ending in `-direct`, selects RGB.
+    /// Otherwise a `TERM` containing `256color` selects the xterm palette. Unrecognized
+    /// terminals and `TERM=dumb` use sixteen colors. Values are matched case-insensitively.
+    public var colorDepth: ColorDepth {
+        guard !isDumb else { return .ansi16 }
+        let colorTerm = variables["COLORTERM"]?.lowercased()
+        let term = variables["TERM"]?.lowercased() ?? ""
+        if colorTerm == "truecolor" || colorTerm == "24bit" || term.hasSuffix("-direct") {
+            return .trueColor
+        }
+        return term.contains("256color") ? .ansi256 : .ansi16
+    }
+
     /// Whether the locale advertises UTF-8, so box-drawing characters and Braille spinner
     /// frames render instead of falling back to ASCII.
     public var supportsUnicode: Bool {

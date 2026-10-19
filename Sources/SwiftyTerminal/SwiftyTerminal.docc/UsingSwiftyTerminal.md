@@ -76,12 +76,13 @@ func inspect() async throws -> Int {
 
 Create a ``TerminalTheme`` from user preferences and pass the same value to your components.
 The default palette uses cyan accents, green success, red errors, yellow warnings and blue information.
-Each role accepts an ``ANSIStyle`` foreground color, including bright variants.
+Each role accepts a ``TerminalColor``: a named color, a bright variant, or an RGB value with
+`UInt8` channels from 0 through 255.
 
 ```swift
 import SwiftyTerminal
 
-let theme = TerminalTheme(accent: .magenta, success: .brightGreen)
+let theme = TerminalTheme(accent: .rgb(120, 80, 255), success: .brightGreen)
 let console = Console(theme: theme)
 let prompter = Prompter(theme: theme)
 let bar = ProgressBar("Uploading", theme: theme)
@@ -97,6 +98,26 @@ use the theme carried by their styler.
 Themes are values, with no process-wide setting. Changing a theme affects components created with
 the updated value; an existing ``Prompter`` can update its `styler.theme`. Color policies still apply:
 a custom theme does not override `NO_COLOR`, redirected streams or ``ColorMode/never``.
+
+``TerminalEnvironment/colorDepth`` uses `COLORTERM=truecolor` or `24bit`, or a `TERM` ending in
+`-direct`, to select direct RGB output. A `TERM` containing `256color` selects the xterm palette;
+otherwise RGB colors use the nearest standard sixteen-color entry. `TERM=dumb` always uses
+sixteen-color depth. Detection is case-insensitive and independent of color enablement.
+
+Fallbacks minimize squared RGB distance. The 256-color fallback uses the fixed color cube and
+grayscale entries, avoiding the configurable first sixteen slots. The sixteen-color fallback
+assumes the standard palette, so its appearance depends on the terminal's palette settings.
+Named colors always retain their original palette entries.
+
+For custom text, use `styler.apply("Brand", color: .rgb(120, 80, 255), styles: [.bold])`.
+A styler initialized with a stream detects depth from the supplied environment. A styler initialized
+with `isEnabled` defaults to ``ColorDepth/trueColor`` and accepts an explicit `colorDepth`.
+For terminals that support RGB without advertising it, set `COLORTERM=truecolor` in their environment.
+See the [xterm color controls](https://invisible-island.net/xterm/ctlseqs/ctlseqs.html) for the escape sequences.
+
+Theme roles use ``TerminalColor`` rather than ``ANSIStyle``. Inferred literals such as `.cyan`
+continue to work; explicitly typed theme-color variables should use ``TerminalColor``.
+Existing ``ANSIStyle`` text styling APIs remain available.
 
 ## Choose terminal capabilities
 

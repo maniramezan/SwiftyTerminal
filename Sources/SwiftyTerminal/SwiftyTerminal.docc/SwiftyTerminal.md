@@ -30,12 +30,14 @@ Use `SwiftyTerminalTesting`'s `ScriptedTerminal` to test prompts and progress wi
 - ``TerminalStream``
 - ``TerminalSize``
 - ``ColorMode``
+- ``ColorDepth``
 - ``Key``
 - ``LiveRegion``
 
 ### Styling
 
 - ``TerminalTheme``
+- ``TerminalColor``
 - ``Styler``
 - ``ANSIStyle``
 - ``styled(_:_:)``

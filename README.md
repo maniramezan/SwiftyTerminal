@@ -28,7 +28,7 @@ swift run swifty-terminal-demo
 
 Choose a component from the menu to try it, then return to the menu to explore another.
 Each prompt and progress component has its own entry. Select Exit or cancel the menu to quit.
-Choose Color theme to change the accent for the rest of the demo.
+Choose Color theme to change the accent for the rest of the demo, using a named color or custom RGB values.
 Redirected input and `TERM=dumb` use a numbered menu.
 
 You can also run a section directly:
@@ -122,13 +122,14 @@ and truncates by display width, so CJK text and emoji line up.
 Pass one `TerminalTheme` to prompts, output and progress components:
 
 ```swift
-let theme = TerminalTheme(accent: .magenta)
+let theme = TerminalTheme(accent: .rgb(120, 80, 255))
 let console = Console(theme: theme)
 let prompter = Prompter(theme: theme)
 let bar = ProgressBar("Uploading", theme: theme)
 ```
 
-Themes accept `ANSIStyle` foreground colors, including bright variants. Customize `success`,
+Themes accept `TerminalColor` values: named colors such as `.magenta` and `.brightCyan`, or
+`.rgb(red, green, blue)` with `UInt8` channels from 0 to 255. Customize `success`,
 `error`, `warning` and `info` independently; omitted roles keep their defaults. `Spinner`,
 `withSpinner`, `StepList`, `LiveTail` and `Styler` also accept `theme:`. Use `Styler.accent`,
 `success`, `error`, `warning` and `info` to apply the same palette to custom text.
@@ -137,6 +138,22 @@ A CLI can build its theme from a user flag, saved preference or color-selection 
 it to its components. Themes are values scoped to each component. They do not enable color:
 `ColorMode` and terminal capabilities still determine whether styling is emitted. Explicit color
 methods such as `Styler.red` keep their requested color.
+
+RGB is emitted directly when `COLORTERM` is `truecolor` or `24bit`, or `TERM` ends in `-direct`.
+A `TERM` containing `256color` uses the nearest fixed xterm color cube or grayscale entry;
+other terminals use the nearest standard sixteen-color entry. These fallbacks compare RGB distances;
+the actual sixteen colors depend on the terminal's user-configured palette. `TERM=dumb` uses
+sixteen-color depth and disables styling in automatic color mode. `--color=always` forces styling
+without changing the detected depth.
+
+For custom text, use `styler.apply("Brand", color: .rgb(120, 80, 255), styles: [.bold])`.
+`Styler(stream:mode:environment:theme:)` detects depth from the supplied environment;
+`Styler(isEnabled:theme:colorDepth:)` allows an explicit depth and defaults to `.trueColor`.
+The RGB and indexed sequences follow the [xterm color controls](https://invisible-island.net/xterm/ctlseqs/ctlseqs.html).
+
+Theme properties now use `TerminalColor`. Existing `.cyan`-style literals work unchanged;
+variables explicitly typed as `ANSIStyle` should use `TerminalColor` when passed to a theme.
+`ANSIStyle` remains available for existing text styling calls.
 
 ## Development
 

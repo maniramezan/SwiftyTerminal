@@ -1,18 +1,18 @@
 /// The semantic colors shared by prompts, output and progress indicators.
 ///
 /// Pass the same theme to each component for a consistent palette. Choose foreground colors
-/// from ``ANSIStyle``; color emission still follows ``ColorMode`` and ``TerminalEnvironment``.
+/// from ``TerminalColor``; color emission still follows ``ColorMode`` and ``TerminalEnvironment``.
 public struct TerminalTheme: Sendable, Equatable {
     /// The color of headings, selections and active progress indicators.
-    public var accent: ANSIStyle
+    public var accent: TerminalColor
     /// The color of successful outcomes.
-    public var success: ANSIStyle
+    public var success: TerminalColor
     /// The color of errors and failed outcomes.
-    public var error: ANSIStyle
+    public var error: TerminalColor
     /// The color of warnings and input validation messages.
-    public var warning: ANSIStyle
+    public var warning: TerminalColor
     /// The color of informational status glyphs and alert borders.
-    public var info: ANSIStyle
+    public var info: TerminalColor
 
     /// Creates a palette, keeping the standard color for any omitted role.
     ///
@@ -23,11 +23,11 @@ public struct TerminalTheme: Sendable, Equatable {
     ///   - warning: The foreground color for warnings and validation messages.
     ///   - info: The foreground color for informational status glyphs and alert borders.
     public init(
-        accent: ANSIStyle = .cyan,
-        success: ANSIStyle = .green,
-        error: ANSIStyle = .red,
-        warning: ANSIStyle = .yellow,
-        info: ANSIStyle = .blue
+        accent: TerminalColor = .cyan,
+        success: TerminalColor = .green,
+        error: TerminalColor = .red,
+        warning: TerminalColor = .yellow,
+        info: TerminalColor = .blue
     ) {
         self.accent = accent
         self.success = success
