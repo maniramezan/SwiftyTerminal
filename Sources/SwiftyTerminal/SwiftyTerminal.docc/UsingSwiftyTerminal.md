@@ -53,7 +53,7 @@ a different memory limit.
 
 ## End asynchronous indicators
 
-Prefer ``withSpinner(_:terminal:colorMode:showsResult:isolation:operation:)`` for one operation;
+Prefer ``withSpinner(_:terminal:colorMode:theme:showsResult:isolation:operation:)`` for one operation;
 it cleans up on both success and errors, including cooperative cancellation. With manually managed
 indicators, call `stop`, `succeed`, `fail`, or `finish` before releasing the last reference. Cancellation
 of a calling task alone does not stop an unstructured animation task. Avoid overlapping independent
@@ -71,6 +71,32 @@ func inspect() async throws -> Int {
     }
 }
 ```
+
+## Choose a color theme
+
+Create a ``TerminalTheme`` from user preferences and pass the same value to your components.
+The default palette uses cyan accents, green success, red errors, yellow warnings and blue information.
+Each role accepts an ``ANSIStyle`` foreground color, including bright variants.
+
+```swift
+import SwiftyTerminal
+
+let theme = TerminalTheme(accent: .magenta, success: .brightGreen)
+let console = Console(theme: theme)
+let prompter = Prompter(theme: theme)
+let bar = ProgressBar("Uploading", theme: theme)
+console.header("Deploy")
+```
+
+``Spinner``, ``withSpinner(_:terminal:colorMode:theme:showsResult:isolation:operation:)``,
+``StepList`` and ``LiveTail`` also accept `theme:`. For custom text, create a ``Styler`` with the
+same theme and use its `accent`, `success`, `error`, `warning` and `info` methods. Explicit methods
+such as `red` still use that named color. Pure renderers such as ``SelectionMenu`` and ``Alert``
+use the theme carried by their styler.
+
+Themes are values, with no process-wide setting. Changing a theme affects components created with
+the updated value; an existing ``Prompter`` can update its `styler.theme`. Color policies still apply:
+a custom theme does not override `NO_COLOR`, redirected streams or ``ColorMode/never``.
 
 ## Choose terminal capabilities
 

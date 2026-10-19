@@ -84,14 +84,14 @@ class Screen:
 
 class PTYPromptTests(unittest.TestCase):
     def run_session(self, steps, section="prompts", expected_exit=0, columns=80, rows=24,
-                    redirected_stdout=False, screen=None, arguments=()):
+                    redirected_stdout=False, screen=None, arguments=(), color=False):
         master, slave = pty.openpty()
         original = termios.tcgetattr(slave)
         fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", rows, columns, 0, 0))
         process = subprocess.Popen(
             [DEMO, section, *arguments],
             stdin=slave, stdout=subprocess.DEVNULL if redirected_stdout else slave, stderr=slave,
-            env={**os.environ, "NO_COLOR": "1", "TERM": "xterm-256color", "LANG": "en_US.UTF-8"},
+            env={**os.environ, "NO_COLOR": "" if color else "1", "TERM": "xterm-256color", "LANG": "en_US.UTF-8"},
         )
         pending = b""
         transcript = bytearray()
@@ -189,6 +189,23 @@ class PTYPromptTests(unittest.TestCase):
             (b"Enter select", b"/Exit"),
             (b"> (*) Exit", b"\r"),
         ], section="menu")
+
+    def test_theme_picker_changes_the_accent_for_subsequent_components(self):
+        output = self.run_session([
+            (b"Enter select", b"/Color theme"),
+            (b"> (*) Color theme", b"\r"),
+            (b"Accent color", None),
+            (b"Enter select", b"/Magenta"),
+            (b"> (*) Magenta", b"\r"),
+            (b"\x1b[35m=== Accent: Magenta ===\x1b[0m", None),
+            (b"Enter select", b"/Single selection"),
+            (b"> (*) Single selection", b"\r"),
+            (b"\x1b[35m> (*) iOS\x1b[0m", None),
+            (b"Enter select", b"\r"),
+            (b"result: platform=0", None),
+            (b"Enter select", b"\x1b"),
+        ], section="menu", color=True)
+        self.assertIn(b"\x1b[35miOS\x1b[0m", output)
 
     def test_full_conversation(self):
         self.run_session([

@@ -3,7 +3,7 @@
 /// The spinner draws on stderr (so `--json` stdout stays clean) and only when that stream is a
 /// terminal; otherwise every call is a no-op. It waits `delay` before drawing, so operations
 /// that finish quickly never flicker. Always end it with ``succeed(_:)``, ``fail(_:)`` or
-/// ``stop()``, or use ``withSpinner(_:terminal:colorMode:showsResult:isolation:operation:)``.
+/// ``stop()``, or use ``withSpinner(_:terminal:colorMode:theme:showsResult:isolation:operation:)``.
 public actor Spinner {
     private let terminal: any Terminal
     private let stream: TerminalStream
@@ -29,6 +29,7 @@ public actor Spinner {
     ///   - terminal: The terminal used for input, output, and capability decisions.
     ///   - stream: The standard stream whose capabilities or output to use.
     ///   - colorMode: Whether styling follows the environment, is forced on, or is disabled.
+    ///   - theme: The semantic palette shared by component colors.
     ///   - delay: How long to wait before displaying the first animation frame.
     ///   - interval: The time between animation frames and, for live tails, between redraws.
     public init(
@@ -36,6 +37,7 @@ public actor Spinner {
         terminal: any Terminal = StandardTerminal(),
         stream: TerminalStream = .standardError,
         colorMode: ColorMode = .auto,
+        theme: TerminalTheme = .default,
         delay: Duration = .milliseconds(150),
         interval: Duration = .milliseconds(80)
     ) {
@@ -44,6 +46,7 @@ public actor Spinner {
             terminal: terminal,
             stream: stream,
             colorMode: colorMode,
+            theme: theme,
             delay: delay,
             interval: interval,
             sleep: { try await Task.sleep(for: $0) }
@@ -55,6 +58,7 @@ public actor Spinner {
         terminal: any Terminal,
         stream: TerminalStream = .standardError,
         colorMode: ColorMode = .auto,
+        theme: TerminalTheme = .default,
         delay: Duration,
         interval: Duration,
         sleep: @escaping @Sendable (Duration) async throws -> Void
@@ -62,7 +66,7 @@ public actor Spinner {
         self.message = message
         self.terminal = terminal
         self.stream = stream
-        self.styler = Styler(isEnabled: terminal.environment.isColorEnabled(for: stream, mode: colorMode))
+        self.styler = Styler(isEnabled: terminal.environment.isColorEnabled(for: stream, mode: colorMode), theme: theme)
         self.symbols = .for(terminal.environment)
         self.delay = delay
         self.interval = max(.milliseconds(1), interval)
@@ -100,7 +104,7 @@ public actor Spinner {
     /// - Parameters:
     ///   - message: A replacement message, or nil to keep the existing message.
     public func succeed(_ message: String? = nil) async {
-        await finish(symbol: styler.green(symbols.success), message: message)
+        await finish(symbol: styler.success(symbols.success), message: message)
     }
 
     /// Stops and leaves `✖ message (elapsed)`.
@@ -108,7 +112,7 @@ public actor Spinner {
     /// - Parameters:
     ///   - message: A replacement message, or nil to keep the existing message.
     public func fail(_ message: String? = nil) async {
-        await finish(symbol: styler.red(symbols.failure), message: message)
+        await finish(symbol: styler.error(symbols.failure), message: message)
     }
 
     /// Stops and erases the spinner without a trace.
@@ -139,7 +143,7 @@ public actor Spinner {
     private func drawNextFrame() {
         let glyph = symbols.spinnerFrames[frame % symbols.spinnerFrames.count]
         frame += 1
-        region.render(["\(styler.cyan(glyph)) \(message)"])
+        region.render(["\(styler.accent(glyph)) \(message)"])
     }
 }
 
@@ -150,6 +154,7 @@ public actor Spinner {
 ///   - message: Text displayed beside the progress indicator or status glyph.
 ///   - terminal: The terminal used for input, output, and capability decisions.
 ///   - colorMode: Whether styling follows the environment, is forced on, or is disabled.
+///   - theme: The semantic palette shared by component colors.
 ///   - showsResult: Whether to leave a success or failure line rather than erasing the spinner.
 ///   - isolation: The actor isolation in which the operation executes; defaults to the caller.
 ///   - operation: The asynchronous work to perform. Its value or error is returned after cleanup.
@@ -157,11 +162,12 @@ public func withSpinner<T>(
     _ message: String,
     terminal: any Terminal = StandardTerminal(),
     colorMode: ColorMode = .auto,
+    theme: TerminalTheme = .default,
     showsResult: Bool = false,
     isolation: isolated (any Actor)? = #isolation,
     operation: () async throws -> T
 ) async rethrows -> T {
-    let spinner = Spinner(message, terminal: terminal, colorMode: colorMode)
+    let spinner = Spinner(message, terminal: terminal, colorMode: colorMode, theme: theme)
     await spinner.start()
     do {
         let value = try await operation()

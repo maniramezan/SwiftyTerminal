@@ -35,6 +35,7 @@ Use `SwiftyTerminalTesting`'s `ScriptedTerminal` to test prompts and progress wi
 
 ### Styling
 
+- ``TerminalTheme``
 - ``Styler``
 - ``ANSIStyle``
 - ``styled(_:_:)``
@@ -51,7 +52,7 @@ Use `SwiftyTerminalTesting`'s `ScriptedTerminal` to test prompts and progress wi
 ### Progress
 
 - ``Spinner``
-- ``withSpinner(_:terminal:colorMode:showsResult:isolation:operation:)``
+- ``withSpinner(_:terminal:colorMode:theme:showsResult:isolation:operation:)``
 - ``ProgressBar``
 - ``StepList``
 - ``LiveTail``

@@ -42,6 +42,7 @@ public actor LiveTail {
     ///   - terminal: Where output is written.
     ///   - stream: The stream to draw on; stderr by default.
     ///   - colorMode: Whether to style output.
+    ///   - theme: The semantic palette shared by component colors.
     ///   - visibleLineCount: Output lines shown under the title.
     ///   - retainedLineCount: Output lines kept for the failure report.
     ///   - interval: Minimum time between redraws and animation frames.
@@ -51,6 +52,7 @@ public actor LiveTail {
         terminal: any Terminal = StandardTerminal(),
         stream: TerminalStream = .standardError,
         colorMode: ColorMode = .auto,
+        theme: TerminalTheme = .default,
         visibleLineCount: Int = 5,
         retainedLineCount: Int = 2000,
         interval: Duration = .milliseconds(80),
@@ -59,7 +61,7 @@ public actor LiveTail {
         self.title = title
         self.terminal = terminal
         self.stream = stream
-        self.styler = Styler(isEnabled: terminal.environment.isColorEnabled(for: stream, mode: colorMode))
+        self.styler = Styler(isEnabled: terminal.environment.isColorEnabled(for: stream, mode: colorMode), theme: theme)
         self.symbols = .for(terminal.environment)
         self.visibleLineCount = max(1, visibleLineCount)
         self.retainedLineCount = max(1, visibleLineCount, retainedLineCount)
@@ -83,7 +85,7 @@ public actor LiveTail {
                 }
             }
         } else {
-            terminal.writeLine("\(styler.cyan(symbols == .unicode ? "→" : ">")) \(title)", to: stream)
+            terminal.writeLine("\(styler.accent(symbols == .unicode ? "→" : ">")) \(title)", to: stream)
         }
     }
 
@@ -126,7 +128,7 @@ public actor LiveTail {
     /// - Parameters:
     ///   - message: A replacement message, or nil to keep the existing message.
     public func succeed(_ message: String? = nil) async {
-        await finish(symbol: styler.green(symbols.success), message: message, report: [])
+        await finish(symbol: styler.success(symbols.success), message: message, report: [])
     }
 
     /// Ends with `✖ title (elapsed)`, preceded on a terminal by the last `reportLineCount`
@@ -140,7 +142,7 @@ public actor LiveTail {
         flushPartialLine()
         let report =
             isInteractive ? Array(captured[capturedStart...].suffix(max(0, reportLineCount ?? captured.count))) : []
-        await finish(symbol: styler.red(symbols.failure), message: message, report: report)
+        await finish(symbol: styler.error(symbols.failure), message: message, report: report)
     }
 
     private func finish(symbol: String, message: String?, report: [String]) async {
@@ -197,7 +199,7 @@ public actor LiveTail {
 
     private func redraw() {
         lastDraw = .now
-        let glyph = styler.cyan(symbols.spinnerFrames[frame % symbols.spinnerFrames.count])
+        let glyph = styler.accent(symbols.spinnerFrames[frame % symbols.spinnerFrames.count])
         let elapsed = startedAt.map { styler.dim(" (\(formatElapsed(.now - $0)))") } ?? ""
         let tail = captured[capturedStart...].suffix(min(visibleLineCount, max(0, terminal.size(for: stream).rows - 2)))
             .map { styler.dim("  " + $0) }

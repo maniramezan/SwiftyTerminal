@@ -3,8 +3,9 @@ import SwiftyTerminal
 import SwiftyTerminalLineEditor
 
 let section = CommandLine.arguments.dropFirst().first ?? "menu"
-let prompter = Prompter()
-let console = Console()
+var theme = TerminalTheme.default
+var prompter = Prompter(theme: theme)
+var console = Console(theme: theme)
 
 @MainActor func runSingleSelection() {
     let platform = prompter.choose("Platform", options: ["iOS", "Android", "Both"], default: 0)
@@ -55,7 +56,7 @@ let console = Console()
         terminal.writeLine("Spinner demo requires a terminal; skipping.", to: .standardError)
         return
     }
-    await withSpinner("Inspecting project", terminal: terminal, showsResult: true) {
+    await withSpinner("Inspecting project", terminal: terminal, theme: theme, showsResult: true) {
         await withCheckedContinuation { continuation in
             DispatchQueue.global().async {
                 terminal.withRawInput {
@@ -69,7 +70,7 @@ let console = Console()
 }
 
 @MainActor func runProgressBar() async {
-    let bar = ProgressBar("Uploading")
+    let bar = ProgressBar("Uploading", theme: theme)
     for step in 0...20 {
         await bar.update(completed: Double(step), total: 20)
         try? await Task.sleep(for: .milliseconds(60))
@@ -78,7 +79,7 @@ let console = Console()
 }
 
 @MainActor func runSteps() async {
-    let steps = StepList(["Build", "Test", "Upload"])
+    let steps = StepList(["Build", "Test", "Upload"], theme: theme)
     for title in ["Build", "Test"] {
         await steps.start(title)
         try? await Task.sleep(for: .milliseconds(700))
@@ -89,7 +90,7 @@ let console = Console()
 }
 
 @MainActor func runLiveTail() async {
-    let tail = LiveTail("Compiling", visibleLineCount: 3)
+    let tail = LiveTail("Compiling", theme: theme, visibleLineCount: 3)
     await tail.start()
     for file in ["AppDelegate", "ContentView", "Model", "Store", "Settings", "Networking"] {
         await tail.append("CompileSwift normal arm64 \(file).swift\n")
@@ -144,6 +145,19 @@ let console = Console()
     editor.saveHistory()
 }
 
+@MainActor func runThemePicker() {
+    let colors: [(name: String, style: ANSIStyle)] = [
+        ("Cyan", .cyan), ("Blue", .blue), ("Magenta", .magenta), ("Green", .green),
+        ("Yellow", .yellow), ("Red", .red), ("White", .white),
+    ]
+    let current = colors.firstIndex { $0.style == theme.accent } ?? 0
+    guard let choice = prompter.choose("Accent color", options: colors.map(\.name), default: current) else { return }
+    theme.accent = colors[choice].style
+    prompter = Prompter(theme: theme)
+    console = Console(theme: theme)
+    console.header("Accent: \(colors[choice].name)")
+}
+
 @MainActor func runMenu() async {
     let demos: [(title: String, run: @MainActor () async -> Void)] = [
         ("Single selection", { runSingleSelection() }),
@@ -158,6 +172,7 @@ let console = Console()
         ("Live output", { await runLiveTail() }),
         ("Tables, alerts and styled output", { runOutput() }),
         ("Line editor", { runLineEditor() }),
+        ("Color theme", { runThemePicker() }),
     ]
     console.header("SwiftyTerminal demo")
     var selection = 0

@@ -21,9 +21,17 @@ public struct Prompter: Prompting {
     /// - Parameters:
     ///   - terminal: The terminal used for input, output, and capability decisions.
     ///   - colorMode: Whether styling follows the environment, is forced on, or is disabled.
-    public init(terminal: any Terminal = StandardTerminal(), colorMode: ColorMode = .auto) {
+    ///   - theme: The semantic palette shared by component colors.
+    public init(
+        terminal: any Terminal = StandardTerminal(),
+        colorMode: ColorMode = .auto,
+        theme: TerminalTheme = .default
+    ) {
         self.terminal = terminal
-        self.styler = Styler(isEnabled: terminal.environment.isColorEnabled(for: .standardOutput, mode: colorMode))
+        self.styler = Styler(
+            isEnabled: terminal.environment.isColorEnabled(for: .standardOutput, mode: colorMode),
+            theme: theme
+        )
         self.usesInteractiveMenus = terminal.environment.supportsInteractiveSelection
     }
 
@@ -36,7 +44,7 @@ public struct Prompter: Prompting {
     /// - Parameters:
     ///   - text: The text to display.
     public func say(_ text: String) {
-        terminal.writeLine(styler.apply(text, .bold, .cyan))
+        terminal.writeLine(styler.apply(text, .bold, styler.theme.accent))
     }
 
     /// Asks for free text. Enter keeps `defaultValue`; `validate` returns an error message to
@@ -55,7 +63,7 @@ public struct Prompter: Prompting {
             let answer = typed.isEmpty ? (defaultValue ?? "") : typed
             if let message = validate?(answer) {
                 acknowledge(promptLine: promptLine, typed: typed, answer: typed)
-                terminal.writeLine(styler.yellow(message))
+                terminal.writeLine(styler.warning(message))
                 continue
             }
             acknowledge(promptLine: promptLine, typed: typed, answer: answer)
@@ -189,9 +197,9 @@ public struct Prompter: Prompting {
     }
 
     private func writeNumberedOptions(_ prompt: String, options: [String]) {
-        terminal.writeLine(styler.apply("\(prompt):", .bold, .cyan))
+        terminal.writeLine(styler.apply("\(prompt):", .bold, styler.theme.accent))
         for (offset, option) in options.enumerated() {
-            terminal.writeLine("  " + styler.cyan("\(offset + 1))") + " \(option)")
+            terminal.writeLine("  " + styler.accent("\(offset + 1))") + " \(option)")
         }
     }
 
@@ -270,6 +278,6 @@ public struct Prompter: Prompting {
             return
         }
         guard typed.isEmpty, !answer.isEmpty, rewritesLines else { return }
-        terminal.write("\u{1B}[1A\u{1B}[2K\r\(promptLine)\(styler.cyan(answer))\n")
+        terminal.write("\u{1B}[1A\u{1B}[2K\r\(promptLine)\(styler.accent(answer))\n")
     }
 }

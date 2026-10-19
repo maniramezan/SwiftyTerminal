@@ -167,7 +167,7 @@ public struct SelectionMenu: Sendable, Equatable {
             let marker =
                 allowsMultiple ? (selected.contains(index) ? "[x]" : "[ ]") : (isFocused ? "(*)" : "( )")
             let line = "\(isFocused ? ">" : " ") \(marker) \(options[index])"
-            lines.append(isFocused ? styler.cyan(line) : line)
+            lines.append(isFocused ? styler.accent(line) : line)
         }
         lines.append(styler.dim(hint(showing: rows, of: visible.count)))
         return lines
@@ -195,7 +195,7 @@ public struct SelectionMenu: Sendable, Equatable {
     public func summary(for outcome: Outcome, styler: Styler) -> String {
         switch outcome {
         case .submitted(let indexes):
-            return styler.bold(title) + ": " + styler.cyan(indexes.map { options[$0] }.joined(separator: ", "))
+            return styler.bold(title) + ": " + styler.accent(indexes.map { options[$0] }.joined(separator: ", "))
         case .cancelled:
             return styler.bold(title) + ": " + styler.dim("cancelled")
         }

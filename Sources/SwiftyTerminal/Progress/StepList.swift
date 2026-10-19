@@ -51,18 +51,20 @@ public actor StepList {
     ///   - terminal: The terminal used for input, output, and capability decisions.
     ///   - stream: The standard stream whose capabilities or output to use.
     ///   - colorMode: Whether styling follows the environment, is forced on, or is disabled.
+    ///   - theme: The semantic palette shared by component colors.
     ///   - interval: The time between animation frames and, for live tails, between redraws.
     public init(
         _ titles: [String],
         terminal: any Terminal = StandardTerminal(),
         stream: TerminalStream = .standardError,
         colorMode: ColorMode = .auto,
+        theme: TerminalTheme = .default,
         interval: Duration = .milliseconds(80)
     ) {
         self.steps = titles.map { Step(title: $0) }
         self.terminal = terminal
         self.stream = stream
-        self.styler = Styler(isEnabled: terminal.environment.isColorEnabled(for: stream, mode: colorMode))
+        self.styler = Styler(isEnabled: terminal.environment.isColorEnabled(for: stream, mode: colorMode), theme: theme)
         self.symbols = .for(terminal.environment)
         self.interval = interval
         self.region = LiveRegion(terminal: terminal, stream: stream)
@@ -89,7 +91,7 @@ public actor StepList {
             startAnimation()
             redraw()
         } else {
-            terminal.writeLine("\(styler.cyan(symbols == .unicode ? "→" : ">")) \(title)", to: stream)
+            terminal.writeLine("\(styler.accent(symbols == .unicode ? "→" : ">")) \(title)", to: stream)
         }
     }
 
@@ -184,11 +186,11 @@ public actor StepList {
             glyph = styler.dim(symbols.pending)
             title = styler.dim(title)
         case .running:
-            glyph = styler.cyan(symbols.spinnerFrames[frame % symbols.spinnerFrames.count])
+            glyph = styler.accent(symbols.spinnerFrames[frame % symbols.spinnerFrames.count])
         case .succeeded:
-            glyph = styler.green(symbols.success)
+            glyph = styler.success(symbols.success)
         case .failed:
-            glyph = styler.red(symbols.failure)
+            glyph = styler.error(symbols.failure)
         case .skipped:
             glyph = styler.dim(symbols.skipped)
             title = styler.dim(title)

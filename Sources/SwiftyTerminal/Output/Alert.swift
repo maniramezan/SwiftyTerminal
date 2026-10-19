@@ -55,10 +55,10 @@ public struct Alert: Sendable, Equatable {
         let unicode = symbols == .unicode
         let (glyph, color): (String, ANSIStyle) =
             switch kind {
-            case .success: (symbols.success, .green)
-            case .info: (symbols.info, .blue)
-            case .warning: (symbols.warning, .yellow)
-            case .error: (symbols.failure, .red)
+            case .success: (symbols.success, styler.theme.success)
+            case .info: (symbols.info, styler.theme.info)
+            case .warning: (symbols.warning, styler.theme.warning)
+            case .error: (symbols.failure, styler.theme.error)
             }
         var body = lines
         if !nextSteps.isEmpty {

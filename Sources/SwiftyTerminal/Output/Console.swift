@@ -18,14 +18,16 @@ public struct Console: Sendable {
     ///   - terminal: The terminal used for input, output, and capability decisions.
     ///   - stream: The standard stream whose capabilities or output to use.
     ///   - colorMode: Whether styling follows the environment, is forced on, or is disabled.
+    ///   - theme: The semantic palette shared by component colors.
     public init(
         terminal: any Terminal = StandardTerminal(),
         stream: TerminalStream = .standardOutput,
-        colorMode: ColorMode = .auto
+        colorMode: ColorMode = .auto,
+        theme: TerminalTheme = .default
     ) {
         self.terminal = terminal
         self.stream = stream
-        self.styler = Styler(isEnabled: terminal.environment.isColorEnabled(for: stream, mode: colorMode))
+        self.styler = Styler(isEnabled: terminal.environment.isColorEnabled(for: stream, mode: colorMode), theme: theme)
         self.symbols = .for(terminal.environment)
     }
 
@@ -42,7 +44,7 @@ public struct Console: Sendable {
     /// - Parameters:
     ///   - title: The title or step name displayed to the user.
     public func header(_ title: String) {
-        print("\n" + styler.apply("=== \(title) ===", .bold, .cyan))
+        print("\n" + styler.apply("=== \(title) ===", .bold, styler.theme.accent))
     }
 
     /// A dim horizontal rule.
@@ -60,39 +62,39 @@ public struct Console: Sendable {
     ///   - value: The value displayed after the key.
     ///   - keyWidth: The minimum display width of the key column.
     public func keyValue(_ key: String, _ value: String, keyWidth: Int = 30) {
-        print("  \(styler.cyan(TextMetrics.padRight(key, toWidth: keyWidth))) \(value)")
+        print("  \(styler.accent(TextMetrics.padRight(key, toWidth: keyWidth))) \(value)")
     }
 
-    /// `✔ message` in green.
+    /// `✔ message` in the theme’s success color.
     ///
     /// - Parameters:
     ///   - message: Text displayed beside the progress indicator or status glyph.
     public func success(_ message: String) {
-        print("\(styler.green(symbols.success)) \(styler.green(message))")
+        print("\(styler.success(symbols.success)) \(styler.success(message))")
     }
 
-    /// `✖ message` in red.
+    /// `✖ message` in the theme’s error color.
     ///
     /// - Parameters:
     ///   - message: Text displayed beside the progress indicator or status glyph.
     public func error(_ message: String) {
-        print("\(styler.red(symbols.failure)) \(styler.red(message))")
+        print("\(styler.error(symbols.failure)) \(styler.error(message))")
     }
 
-    /// `⚠ message` in yellow.
+    /// `⚠ message` in the theme’s warning color.
     ///
     /// - Parameters:
     ///   - message: Text displayed beside the progress indicator or status glyph.
     public func warning(_ message: String) {
-        print("\(styler.yellow(symbols.warning)) \(styler.yellow(message))")
+        print("\(styler.warning(symbols.warning)) \(styler.warning(message))")
     }
 
-    /// `ℹ message` in blue.
+    /// `ℹ message` in the theme’s information color.
     ///
     /// - Parameters:
     ///   - message: Text displayed beside the progress indicator or status glyph.
     public func info(_ message: String) {
-        print("\(styler.blue(symbols.info)) \(message)")
+        print("\(styler.info(symbols.info)) \(message)")
     }
 
     /// An indented pass/fail line, as in a `doctor` report.
@@ -101,8 +103,8 @@ public struct Console: Sendable {
     ///   - name: The capability or component being checked.
     ///   - passed: Whether the check succeeded.
     public func check(_ name: String, passed: Bool) {
-        let symbol = passed ? styler.green(symbols.success) : styler.red(symbols.failure)
-        print("  \(symbol) \(passed ? styler.green(name) : styler.red(name))")
+        let symbol = passed ? styler.success(symbols.success) : styler.error(symbols.failure)
+        print("  \(symbol) \(passed ? styler.success(name) : styler.error(name))")
     }
 
     /// A column-aligned table.

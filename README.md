@@ -28,6 +28,7 @@ swift run swifty-terminal-demo
 
 Choose a component from the menu to try it, then return to the menu to explore another.
 Each prompt and progress component has its own entry. Select Exit or cancel the menu to quit.
+Choose Color theme to change the accent for the rest of the demo.
 Redirected input and `TERM=dumb` use a numbered menu.
 
 You can also run a section directly:
@@ -114,6 +115,27 @@ Color follows `NO_COLOR`, `FORCE_COLOR`, `TERM=dumb` and whether the stream is a
 stream. Glyphs and box drawing fall back to ASCII when the effective locale is not UTF-8
 (`LC_ALL`, then `LC_CTYPE`, then `LANG`). `TextMetrics` measures
 and truncates by display width, so CJK text and emoji line up.
+
+## Color themes
+
+Pass one `TerminalTheme` to prompts, output and progress components:
+
+```swift
+let theme = TerminalTheme(accent: .magenta)
+let console = Console(theme: theme)
+let prompter = Prompter(theme: theme)
+let bar = ProgressBar("Uploading", theme: theme)
+```
+
+Themes accept `ANSIStyle` foreground colors, including bright variants. Customize `success`,
+`error`, `warning` and `info` independently; omitted roles keep their defaults. `Spinner`,
+`withSpinner`, `StepList`, `LiveTail` and `Styler` also accept `theme:`. Use `Styler.accent`,
+`success`, `error`, `warning` and `info` to apply the same palette to custom text.
+
+A CLI can build its theme from a user flag, saved preference or color-selection prompt, then pass
+it to its components. Themes are values scoped to each component. They do not enable color:
+`ColorMode` and terminal capabilities still determine whether styling is emitted. Explicit color
+methods such as `Styler.red` keep their requested color.
 
 ## Development
 

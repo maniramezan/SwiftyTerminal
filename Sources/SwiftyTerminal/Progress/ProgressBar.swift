@@ -25,6 +25,7 @@ public actor ProgressBar {
     ///   - terminal: The terminal used for input, output, and capability decisions.
     ///   - stream: The standard stream whose capabilities or output to use.
     ///   - colorMode: Whether styling follows the environment, is forced on, or is disabled.
+    ///   - theme: The semantic palette shared by component colors.
     ///   - width: The desired display width in terminal character cells.
     ///   - minimumRedrawInterval: The minimum delay between progress updates; completion is drawn immediately.
     public init(
@@ -32,13 +33,14 @@ public actor ProgressBar {
         terminal: any Terminal = StandardTerminal(),
         stream: TerminalStream = .standardError,
         colorMode: ColorMode = .auto,
+        theme: TerminalTheme = .default,
         width: Int = 30,
         minimumRedrawInterval: Duration = .milliseconds(50)
     ) {
         self.message = message
         self.terminal = terminal
         self.stream = stream
-        self.styler = Styler(isEnabled: terminal.environment.isColorEnabled(for: stream, mode: colorMode))
+        self.styler = Styler(isEnabled: terminal.environment.isColorEnabled(for: stream, mode: colorMode), theme: theme)
         self.symbols = .for(terminal.environment)
         self.width = max(5, width)
         self.minimumRedrawInterval = minimumRedrawInterval
@@ -76,7 +78,7 @@ public actor ProgressBar {
     /// - Parameters:
     ///   - message: A replacement message, or nil to keep the existing message.
     public func succeed(_ message: String? = nil) {
-        finish(symbol: styler.green(symbols.success), message: message)
+        finish(symbol: styler.success(symbols.success), message: message)
     }
 
     /// Leaves `✖ message (elapsed)`.
@@ -84,7 +86,7 @@ public actor ProgressBar {
     /// - Parameters:
     ///   - message: A replacement message, or nil to keep the existing message.
     public func fail(_ message: String? = nil) {
-        finish(symbol: styler.red(symbols.failure), message: message)
+        finish(symbol: styler.error(symbols.failure), message: message)
     }
 
     /// Erases the bar.
@@ -105,7 +107,7 @@ public actor ProgressBar {
     func line() -> String {
         let filled = Int((fraction * Double(width)).rounded(.down))
         let bar =
-            styler.cyan(String(repeating: symbols.progressFilled, count: filled))
+            styler.accent(String(repeating: symbols.progressFilled, count: filled))
             + styler.dim(String(repeating: symbols.progressEmpty, count: width - filled))
         let percent = Int((fraction * 100).rounded(.down))
         return "\(message) [\(bar)] \(percent)%"

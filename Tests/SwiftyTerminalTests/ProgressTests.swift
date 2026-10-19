@@ -29,6 +29,8 @@ struct ProgressTests {
         let spinner = Spinner(
             "Inspecting",
             terminal: terminal,
+            colorMode: .always,
+            theme: TerminalTheme(accent: .magenta),
             delay: .seconds(10),
             interval: .seconds(1),
             sleep: { try await schedule.sleep($0) }
@@ -42,6 +44,7 @@ struct ProgressTests {
         let output = terminal.plainOutput(.standardError)
         #expect(output.contains("⠋ Inspecting"))
         #expect(output.contains("✔ Inspected ("))
+        #expect(terminal.output(.standardError).contains("\u{1B}[35m⠋\u{1B}[0m"))
         #expect(terminal.output(.standardOutput).isEmpty)
     }
 

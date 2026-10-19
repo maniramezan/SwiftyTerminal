@@ -58,18 +58,23 @@ public enum ANSIStyle: String, Sendable, CaseIterable {
 
 /// Applies ``ANSIStyle``s when styling is enabled and returns text unchanged otherwise.
 ///
-/// Decide once per stream (``init(stream:mode:environment:)``) and pass the styler around,
+/// Decide once per stream (``init(stream:mode:environment:theme:)``) and pass the styler around,
 /// rather than checking the terminal at every call site.
 public struct Styler: Sendable, Equatable {
     /// Whether styles are emitted.
     public let isEnabled: Bool
 
+    /// The semantic palette used by components and theme-aware styling methods.
+    public var theme: TerminalTheme
+
     /// Creates a styler with an explicit decision.
     ///
     /// - Parameters:
     ///   - isEnabled: Whether the styler emits ANSI sequences.
-    public init(isEnabled: Bool) {
+    ///   - theme: The semantic palette to use when styling components.
+    public init(isEnabled: Bool, theme: TerminalTheme = .default) {
         self.isEnabled = isEnabled
+        self.theme = theme
     }
 
     /// Creates a styler for `stream` following `mode` and the process environment.
@@ -78,12 +83,15 @@ public struct Styler: Sendable, Equatable {
     ///   - stream: The standard stream whose capabilities or output to use.
     ///   - mode: The requested color policy.
     ///   - environment: Terminal capabilities and environment variables to use for rendering decisions.
+    ///   - theme: The semantic palette to use when styling components.
     public init(
         stream: TerminalStream,
         mode: ColorMode = .auto,
-        environment: TerminalEnvironment = .current()
+        environment: TerminalEnvironment = .current(),
+        theme: TerminalTheme = .default
     ) {
         self.isEnabled = environment.isColorEnabled(for: stream, mode: mode)
+        self.theme = theme
     }
 
     /// A styler for stdout in ``ColorMode/auto``, resolved once per process.
@@ -113,6 +121,36 @@ public struct Styler: Sendable, Equatable {
         guard isEnabled, !styles.isEmpty, !text.isEmpty else { return text }
         return styles.map(\.escapeSequence).joined() + text + ANSIStyle.reset
     }
+
+    /// Text in the theme’s accent color.
+    ///
+    /// - Parameters:
+    ///   - text: The text to style.
+    public func accent(_ text: String) -> String { apply(text, theme.accent) }
+
+    /// Text in the theme’s success color.
+    ///
+    /// - Parameters:
+    ///   - text: The text to style.
+    public func success(_ text: String) -> String { apply(text, theme.success) }
+
+    /// Text in the theme’s error color.
+    ///
+    /// - Parameters:
+    ///   - text: The text to style.
+    public func error(_ text: String) -> String { apply(text, theme.error) }
+
+    /// Text in the theme’s warning color.
+    ///
+    /// - Parameters:
+    ///   - text: The text to style.
+    public func warning(_ text: String) -> String { apply(text, theme.warning) }
+
+    /// Text in the theme’s informational color.
+    ///
+    /// - Parameters:
+    ///   - text: The text to style.
+    public func info(_ text: String) -> String { apply(text, theme.info) }
 
     /// Bold text.
     ///
