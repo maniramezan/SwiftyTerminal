@@ -27,10 +27,15 @@ let package = Package(
             dependencies: ["CSwiftyTerminalLineEditor"]
         ),
         .target(name: "SwiftyTerminalTesting", dependencies: ["SwiftyTerminal"]),
-        .executableTarget(name: "swifty-terminal-demo", dependencies: ["SwiftyTerminal", "SwiftyTerminalLineEditor"]),
+        .executableTarget(
+            name: "swifty-terminal-demo",
+            dependencies: ["SwiftyTerminal", "SwiftyTerminalLineEditor"],
+            swiftSettings: [.defaultIsolation(MainActor.self)]
+        ),
         .executableTarget(
             name: "swifty-terminal-release-check",
-            dependencies: ["SwiftyTerminal", "SwiftyTerminalTesting"]
+            dependencies: ["SwiftyTerminal", "SwiftyTerminalTesting"],
+            swiftSettings: [.defaultIsolation(MainActor.self)]
         ),
         .testTarget(
             name: "SwiftyTerminalTests",

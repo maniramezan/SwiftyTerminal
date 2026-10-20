@@ -8,17 +8,17 @@ var theme = TerminalTheme.default
 var prompter = Prompter(theme: theme)
 var console = Console(theme: theme)
 
-@MainActor func runSingleSelection() {
+func runSingleSelection() {
     let platform = prompter.choose("Platform", options: ["iOS", "Android", "Both"], default: 0)
     console.print("result: platform=\(platform.map(String.init) ?? "cancelled")")
 }
 
-@MainActor func runConfirmation() {
+func runConfirmation() {
     let proceed = prompter.confirm("Continue?", default: true)
     console.print("result: continue=\(proceed.map(String.init) ?? "cancelled")")
 }
 
-@MainActor func runMultipleSelection() {
+func runMultipleSelection() {
     let devices = prompter.chooseMany(
         "Devices",
         options: ["iPhone 17", "iPhone 17 Pro", "iPad Air", "Pixel 9", "Pixel Tablet"],
@@ -27,22 +27,22 @@ var console = Console(theme: theme)
     console.print("result: devices=\(devices.map { $0.map(String.init).joined(separator: ",") } ?? "cancelled")")
 }
 
-@MainActor func runKeyChoice() {
+func runKeyChoice() {
     let action = prompter.askKey("Tests failed", keys: ["r", "s", "a"], default: "r")
     console.print("result: action=\(action.map(String.init) ?? "cancelled")")
 }
 
-@MainActor func runTextInput() {
+func runTextInput() {
     let scheme = prompter.ask("Scheme", default: "MyApp")
     console.print("result: scheme=\(scheme ?? "cancelled")")
 }
 
-@MainActor func runSecretInput() {
+func runSecretInput() {
     let secret = prompter.askSecret("Password")
     console.print("result: secret-length=\(secret.map { String($0.count) } ?? "cancelled")")
 }
 
-@MainActor func runPrompts() {
+func runPrompts() {
     runSingleSelection()
     runConfirmation()
     runMultipleSelection()
@@ -70,7 +70,7 @@ nonisolated func runSpinner() async {
     }
 }
 
-@MainActor func runProgressBar() async {
+func runProgressBar() async {
     let bar = ProgressBar("Uploading", theme: theme)
     for step in 0...20 {
         await bar.update(completed: Double(step), total: 20)
@@ -79,7 +79,7 @@ nonisolated func runSpinner() async {
     await bar.succeed("Uploaded build")
 }
 
-@MainActor func runSteps() async {
+func runSteps() async {
     let steps = StepList(["Build", "Test", "Upload"], theme: theme)
     for title in ["Build", "Test"] {
         await steps.start(title)
@@ -90,7 +90,7 @@ nonisolated func runSpinner() async {
     await steps.finish()
 }
 
-@MainActor func runLiveTail() async {
+func runLiveTail() async {
     let tail = LiveTail("Compiling", theme: theme, visibleLineCount: 3)
     await tail.start()
     for file in ["AppDelegate", "ContentView", "Model", "Store", "Settings", "Networking"] {
@@ -100,14 +100,14 @@ nonisolated func runSpinner() async {
     await tail.succeed()
 }
 
-@MainActor func runProgress() async {
+func runProgress() async {
     await runSpinner()
     await runProgressBar()
     await runSteps()
     await runLiveTail()
 }
 
-@MainActor func runOutput() {
+func runOutput() {
     console.header("Doctor")
     console.check("Xcode 26.1", passed: true)
     console.check("Android SDK", passed: false)
@@ -129,7 +129,7 @@ nonisolated func runSpinner() async {
     )
 }
 
-@MainActor func runLineEditor(historyPath: String? = nil) {
+func runLineEditor(historyPath: String? = nil) {
     let editor = LineEditor(historyPath: historyPath)
     editor.setCompletions(commands: ["tap_element", "status", "exit"])
     editor.loadHistory()
@@ -154,7 +154,7 @@ private func parseRGB(_ text: String) -> TerminalColor? {
     return .rgb(channels[0], channels[1], channels[2])
 }
 
-@MainActor func runThemePicker() {
+func runThemePicker() {
     let colors: [(name: String, color: TerminalColor)] = [
         ("Cyan", .cyan), ("Blue", .blue), ("Magenta", .magenta), ("Green", .green),
         ("Yellow", .yellow), ("Red", .red), ("White", .white),
@@ -184,7 +184,7 @@ private func parseRGB(_ text: String) -> TerminalColor? {
     console.header("Accent: \(name)")
 }
 
-@MainActor func runMenu() async {
+func runMenu() async {
     let demos: [(title: String, run: @MainActor () async -> Void)] = [
         ("Single selection", { runSingleSelection() }),
         ("Multiple selection", { runMultipleSelection() }),

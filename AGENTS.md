@@ -63,8 +63,10 @@ swift test -Xswiftc -warnings-as-errors --filter PrompterTests/<testFunction>
   `isolation: isolated (any Actor)? = #isolation` and `rethrows`. Async helpers that take a closure
   use separate throwing and non-throwing overloads instead, and the release-check job (Xcode 26.6,
   `-c release`) runs them; add new helpers of that kind to `swifty-terminal-release-check`.
-- **Platforms:** macOS 15+ and Linux (Swift 6.2, language mode 6). `SwiftyTerminalLineEditor` links
-  libedit only on macOS and falls back to `getline` elsewhere, so `#if os` changes need `make linux-ci`.
+- **Platforms:** macOS 15+ and Linux (Swift 6.2, language mode 6). The executables use
+  `.defaultIsolation(MainActor.self)`; the libraries stay nonisolated so consumers can call them from
+  any isolation. `SwiftyTerminalLineEditor` links libedit only on macOS and falls back to `getline`
+  elsewhere, so `#if os` changes need `make linux-ci`.
 
 ## Rules
 
