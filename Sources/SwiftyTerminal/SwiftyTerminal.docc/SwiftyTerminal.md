@@ -54,7 +54,8 @@ Use `SwiftyTerminalTesting`'s `ScriptedTerminal` to test prompts and progress wi
 ### Progress
 
 - ``Spinner``
-- ``withSpinner(_:terminal:colorMode:theme:showsResult:isolation:operation:)``
+- ``withSpinner(_:terminal:colorMode:theme:showsResult:operation:)-1vwj3``
+- ``withSpinner(_:terminal:colorMode:theme:showsResult:operation:)-8bo4c``
 - ``ProgressBar``
 - ``StepList``
 - ``LiveTail``

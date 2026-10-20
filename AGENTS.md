@@ -58,6 +58,11 @@ swift test -Xswiftc -warnings-as-errors --filter PrompterTests/<testFunction>
   new Swift code needs tests in `Tests/SwiftyTerminalTests`.
 - **Public API is checked by `Scripts/check-documentation.py` and DocC:** `make docc` fails on any source-declared public API without a summary or parameter description,
   and on DocC warnings. Compiler-synthesized and external declarations are excluded. `docs/` is generated and git-ignored.
+- **No `#isolation` + `rethrows` on async helpers.** Release builds from Xcode 26.6 (Swift 6.3)
+  aborted inside `withSpinner` with "freed pointer was not the last allocation" when it took
+  `isolation: isolated (any Actor)? = #isolation` and `rethrows`. Async helpers that take a closure
+  use separate throwing and non-throwing overloads instead, and the release-check job (Xcode 26.6,
+  `-c release`) runs them; add new helpers of that kind to `swifty-terminal-release-check`.
 - **Platforms:** macOS 15+ and Linux (Swift 6.2, language mode 6). `SwiftyTerminalLineEditor` links
   libedit only on macOS and falls back to `getline` elsewhere, so `#if os` changes need `make linux-ci`.
 

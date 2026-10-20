@@ -51,7 +51,7 @@ var console = Console(theme: theme)
     runSecretInput()
 }
 
-@MainActor func runSpinner() async {
+nonisolated func runSpinner() async {
     let terminal = StandardTerminal()
     guard terminal.environment.isInputTerminal else {
         terminal.writeLine("Spinner demo requires a terminal; skipping.", to: .standardError)

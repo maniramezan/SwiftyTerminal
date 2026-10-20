@@ -53,11 +53,16 @@ a different memory limit.
 
 ## End asynchronous indicators
 
-Prefer ``withSpinner(_:terminal:colorMode:theme:showsResult:isolation:operation:)`` for one operation;
+Prefer ``withSpinner(_:terminal:colorMode:theme:showsResult:operation:)-1vwj3`` for one operation;
 it cleans up on both success and errors, including cooperative cancellation. With manually managed
 indicators, call `stop`, `succeed`, `fail`, or `finish` before releasing the last reference. Cancellation
 of a calling task alone does not stop an unstructured animation task. Avoid overlapping independent
 live regions on the same stream; coordinate progress and prompt ownership in the consumer.
+
+`withSpinner` is a nonisolated function with separate throwing and non-throwing overloads, so its
+`operation` closure is sent off the caller's actor. Call it from nonisolated code, such as a command's
+`run()`; from `@MainActor` or other actor-isolated code, drive a ``Spinner`` directly with `start()`
+and `stop()`, `succeed(_:)` or `fail(_:)`.
 
 ```swift
 import SwiftyTerminal
@@ -89,7 +94,7 @@ let bar = ProgressBar("Uploading", theme: theme)
 console.header("Deploy")
 ```
 
-``Spinner``, ``withSpinner(_:terminal:colorMode:theme:showsResult:isolation:operation:)``,
+``Spinner``, ``withSpinner(_:terminal:colorMode:theme:showsResult:operation:)-1vwj3``,
 ``StepList`` and ``LiveTail`` also accept `theme:`. For custom text, create a ``Styler`` with the
 same theme and use its `accent`, `success`, `error`, `warning` and `info` methods. Explicit methods
 such as `red` still use that named color. Pure renderers such as ``SelectionMenu`` and ``Alert``

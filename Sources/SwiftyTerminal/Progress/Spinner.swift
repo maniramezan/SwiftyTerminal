@@ -3,7 +3,7 @@
 /// The spinner draws on stderr (so `--json` stdout stays clean) and only when that stream is a
 /// terminal; otherwise every call is a no-op. It waits `delay` before drawing, so operations
 /// that finish quickly never flicker. Always end it with ``succeed(_:)``, ``fail(_:)`` or
-/// ``stop()``, or use ``withSpinner(_:terminal:colorMode:theme:showsResult:isolation:operation:)``.
+/// ``stop()``, or use ``withSpinner(_:terminal:colorMode:theme:showsResult:operation:)-1vwj3``.
 public actor Spinner {
     private let terminal: any Terminal
     private let stream: TerminalStream
@@ -147,8 +147,11 @@ public actor Spinner {
     }
 }
 
-/// Runs `operation` with a spinner, erasing it afterwards; with `showsResult`, leaves a
-/// success or failure line instead. `operation` runs in the caller's isolation.
+/// Runs a throwing `operation` with a spinner, erasing it afterwards; with `showsResult`, leaves a
+/// success or failure line instead.
+///
+/// The spinner is stopped on both the return and the throw path before the value or error is
+/// passed on.
 ///
 /// - Parameters:
 ///   - message: Text displayed beside the progress indicator or status glyph.
@@ -156,7 +159,6 @@ public actor Spinner {
 ///   - colorMode: Whether styling follows the environment, is forced on, or is disabled.
 ///   - theme: The semantic palette shared by component colors.
 ///   - showsResult: Whether to leave a success or failure line rather than erasing the spinner.
-///   - isolation: The actor isolation in which the operation executes; defaults to the caller.
 ///   - operation: The asynchronous work to perform. Its value or error is returned after cleanup.
 public func withSpinner<T>(
     _ message: String,
@@ -164,17 +166,42 @@ public func withSpinner<T>(
     colorMode: ColorMode = .auto,
     theme: TerminalTheme = .default,
     showsResult: Bool = false,
-    isolation: isolated (any Actor)? = #isolation,
     operation: () async throws -> T
-) async rethrows -> T {
+) async throws -> T {
     let spinner = Spinner(message, terminal: terminal, colorMode: colorMode, theme: theme)
     await spinner.start()
+    let value: T
     do {
-        let value = try await operation()
-        if showsResult { await spinner.succeed() } else { await spinner.stop() }
-        return value
+        value = try await operation()
     } catch {
         if showsResult { await spinner.fail() } else { await spinner.stop() }
         throw error
     }
+    if showsResult { await spinner.succeed() } else { await spinner.stop() }
+    return value
+}
+
+/// Runs a non-throwing `operation` with a spinner, erasing it afterwards; with `showsResult`,
+/// leaves a success line instead.
+///
+/// - Parameters:
+///   - message: Text displayed beside the progress indicator or status glyph.
+///   - terminal: The terminal used for input, output, and capability decisions.
+///   - colorMode: Whether styling follows the environment, is forced on, or is disabled.
+///   - theme: The semantic palette shared by component colors.
+///   - showsResult: Whether to leave a success line rather than erasing the spinner.
+///   - operation: The asynchronous work to perform. Its value is returned after cleanup.
+public func withSpinner<T>(
+    _ message: String,
+    terminal: any Terminal = StandardTerminal(),
+    colorMode: ColorMode = .auto,
+    theme: TerminalTheme = .default,
+    showsResult: Bool = false,
+    operation: () async -> T
+) async -> T {
+    let spinner = Spinner(message, terminal: terminal, colorMode: colorMode, theme: theme)
+    await spinner.start()
+    let value = await operation()
+    if showsResult { await spinner.succeed() } else { await spinner.stop() }
+    return value
 }
