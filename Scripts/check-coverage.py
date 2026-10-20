@@ -5,7 +5,7 @@ Usage: check-coverage.py <codecov.json> <repo-root> <minimum-percent>
 
 The gate applies to the Swift sources. The C targets (raw terminal I/O, libedit) only run against a
 real TTY, which `Scripts/test-pty.py` exercises in a separate process, so their coverage is
-reported but not gated. The demo executable is excluded.
+reported but not gated. The demo and release-check executables are excluded.
 """
 import json
 import os
@@ -21,7 +21,7 @@ def main():
     rows = []
     for entry in files:
         name = entry["filename"]
-        if not name.startswith(root) or "/swifty-terminal-demo/" in name:
+        if not name.startswith(root) or "/swifty-terminal-demo/" in name or "/swifty-terminal-release-check/" in name:
             continue
         lines = entry["summary"]["lines"]
         kind = "c" if name.endswith(".c") else "swift"

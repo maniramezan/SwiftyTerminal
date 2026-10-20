@@ -28,6 +28,10 @@ let package = Package(
         ),
         .target(name: "SwiftyTerminalTesting", dependencies: ["SwiftyTerminal"]),
         .executableTarget(name: "swifty-terminal-demo", dependencies: ["SwiftyTerminal", "SwiftyTerminalLineEditor"]),
+        .executableTarget(
+            name: "swifty-terminal-release-check",
+            dependencies: ["SwiftyTerminal", "SwiftyTerminalTesting"]
+        ),
         .testTarget(
             name: "SwiftyTerminalTests",
             dependencies: ["SwiftyTerminal", "SwiftyTerminalLineEditor", "SwiftyTerminalTesting"]

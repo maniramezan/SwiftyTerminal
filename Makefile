@@ -1,4 +1,4 @@
-.PHONY: help build test test-pty coverage docc test-tooling lint format demo check linux-shell linux-build linux-test linux-ci
+.PHONY: help build test test-pty release-check coverage docc test-tooling lint format demo check linux-shell linux-build linux-test linux-ci
 
 MINIMUM_LINE_COVERAGE ?= 90
 
@@ -8,6 +8,7 @@ help:
 	  '  make build        Build with warnings as errors' \
 	  '  make test         Run the unit tests with warnings as errors' \
 	  '  make test-pty     Drive the demo through a real pseudo-terminal' \
+	  '  make release-check Run withSpinner scenarios from an optimized (-c release) build' \
 	  '  make coverage     Run tests with coverage and enforce the Swift line minimum' \
 	  '  make docc         Build the DocC site into docs/ with warnings as errors' \
 	  '  make lint         Run swift-format lint --strict' \
@@ -27,6 +28,9 @@ test:
 
 test-pty: build
 	python3 -I Scripts/test-pty.py
+
+release-check:
+	swift run -c release -Xswiftc -warnings-as-errors swifty-terminal-release-check
 
 coverage:
 	swift test --enable-code-coverage -Xswiftc -warnings-as-errors
@@ -52,7 +56,7 @@ format:
 demo:
 	swift run swifty-terminal-demo
 
-check: lint coverage test-pty docc linux-ci
+check: lint coverage test-pty release-check docc linux-ci
 
 linux-shell:
 	Scripts/linux-shell.sh

@@ -17,6 +17,7 @@ terminal belongs here rather than in a consumer, so the tools look and behave al
 | `Sources/SwiftyTerminalLineEditor` (+ C target) | libedit `readline`, history, tab completion; plain `getline` fallback without libedit (Linux). |
 | `Sources/SwiftyTerminalTesting` | `ScriptedTerminal`. |
 | `Sources/swifty-terminal-demo` | Component tour; `Scripts/test-pty.py` drives its `prompts` section in a real PTY. |
+| `Sources/swifty-terminal-release-check` | `withSpinner` scenarios run from an optimized build; CI runs it on Xcode 26.6. |
 
 ## Build & test
 
@@ -25,6 +26,7 @@ terminal belongs here rather than in a consumer, so the tools look and behave al
 | `make build` | `swift build -Xswiftc -warnings-as-errors` |
 | `make test` | Swift Testing unit tests |
 | `make test-pty` | Real pseudo-terminal: raw keys, hidden input, termios restored |
+| `make release-check` | Runs `swifty-terminal-release-check` built with `-c release` |
 | `make coverage` | Tests with coverage; fails below 90% Swift line coverage (C is covered by test-pty) |
 | `make docc` | DocC with warnings as errors: document every public symbol and parameter |
 | `make lint` | swift-format lint --strict (run after the final edit) |

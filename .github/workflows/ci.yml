@@ -37,6 +37,19 @@ jobs:
       - name: Real-PTY prompt tests
         run: make test-pty
 
+  release-check:
+    name: Release-mode withSpinner (Xcode 26.6)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90
+        with:
+          xcode-version: '26.6'
+      - name: Swift version
+        run: swift --version
+      - name: Optimized withSpinner scenarios
+        run: make release-check
+
   linux:
     name: Test (Linux, Swift ${{ matrix.swift }})
     runs-on: ubuntu-24.04
@@ -75,7 +88,7 @@ jobs:
   deploy-docs:
     name: Deploy DocC
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [lint, macos, linux, docs]
+    needs: [lint, macos, release-check, linux, docs]
     runs-on: ubuntu-24.04
     permissions:
       pages: write
